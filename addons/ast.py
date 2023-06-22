@@ -73,12 +73,16 @@ def addon_core(dumpfile, quiet=False):
         if conditionalOrLoopDetected:
             if token.str == '{': 
                 conditionalOrLoopDetected = False
+                temp.pop(0)
                 conditionalOrLoopList.append(temp)
                 temp = []
             else:
                 if token.str != '(' and token.str != ')':
                     temp.append(token.Id)
     print(conditionalOrLoopList)
+    for tokenIDList in conditionalOrLoopList:
+        for tokenID in tokenIDList:
+            print(tokensMap[tokenID])
         
 
 def get_args_parser():
