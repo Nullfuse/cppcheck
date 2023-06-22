@@ -77,12 +77,35 @@ def addon_core(dumpfile, quiet=False):
                 conditionalOrLoopList.append(temp)
                 temp = []
             else:
-                if token.str != '(' and token.str != ')':
+                if token.str != '(' and token.str != ')' and token.str != ';':
                     temp.append(token.Id)
     print(conditionalOrLoopList)
     for tokenIDList in conditionalOrLoopList:
+        tempStr = ''
+        for tokenID in tokenIDList:
+            tempStr = tempStr + tokensMap[tokenID].str
+        print(tempStr)
+        print('\n')
         for tokenID in tokenIDList:
             print(tokensMap[tokenID])
+
+    for tokenIDList in conditionalOrLoopList:
+        tempStr = ''
+        for tokenID in tokenIDList:
+            currentID = tokenID
+            while True:
+                if currentID in astParentsMap:
+                    if tokensMap[astParentsMap[currentID]].getKnownIntValue():
+                        tempStr = tempStr + ' ' + str(tokensMap[astParentsMap[currentID]].getKnownIntValue())
+                    else:
+                        tempStr = tempStr + ' ' + tokensMap[astParentsMap[currentID]].str
+                    if tokensMap[astParentsMap[currentID]].astParentId:
+                        currentID = tokensMap[astParentsMap[currentID]].astParentId
+                    else:
+                        break
+                else:
+                    break
+        print(tempStr + '\n')
         
 
 def get_args_parser():
