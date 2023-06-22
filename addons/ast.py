@@ -56,6 +56,30 @@ def addon_core(dumpfile, quiet=False):
           break
       print("\n")
 
+    conditionalOrLoopList = []
+    
+    for cfg in data.configurations:
+      conditionalOrLoopDetected = False
+      temp = []
+      for token in cfg.tokenlist:
+        if token.str == 'if':
+            conditionalOrLoopDetected = True
+        if token.str == 'while':
+            conditionalOrLoopDetected = True
+        if token.str == 'for':
+            conditionalOrLoopDetected = True
+        if token.str == 'switch':
+            conditionalOrLoopDetected = True
+        if conditionalOrLoopDetected:
+            if token.str == '{': 
+                conditionalOrLoopDetected = False
+                conditionalOrLoopList.append(temp)
+                temp = []
+            else:
+                if token.str != '(' and token.str != ')':
+                    temp.append(token.Id)
+    print(conditionalOrLoopList)
+        
 
 def get_args_parser():
     parser = cppcheckdata.ArgumentParser()
