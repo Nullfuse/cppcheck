@@ -90,8 +90,8 @@ def addon_core(dumpfile, quiet=False):
             print(tokensMap[tokenID])
 
     for tokenIDList in conditionalOrLoopList:
-        tempStr = ''
         for tokenID in tokenIDList:
+            tempStr = ''
             currentID = tokenID
             while True:
                 if currentID in astParentsMap:
@@ -99,13 +99,10 @@ def addon_core(dumpfile, quiet=False):
                         tempStr = tempStr + ' ' + str(tokensMap[astParentsMap[currentID]].getKnownIntValue())
                     else:
                         tempStr = tempStr + ' ' + tokensMap[astParentsMap[currentID]].str
-                    if tokensMap[astParentsMap[currentID]].astParentId:
-                        currentID = tokensMap[astParentsMap[currentID]].astParentId
-                    else:
-                        break
+                    currentID = astParentsMap[currentID]
                 else:
                     break
-        print(tempStr + '\n')
+            print(tempStr + '\n')
         
 
 def get_args_parser():
