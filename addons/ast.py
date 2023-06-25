@@ -68,7 +68,7 @@ def addon_core(dumpfile, quiet=False):
       conditionalOrLoopDetected = False
       conditionalOrLoopType = ''
       temp = []
-      for token in cfg.tokenlist:
+      for idx, token in enumerate(cfg.tokenlist):
         if token.str == 'if':
             conditionalOrLoopDetected = True
             conditionalOrLoopType = 'if'
@@ -81,15 +81,32 @@ def addon_core(dumpfile, quiet=False):
         if token.str == 'case':
             conditionalOrLoopDetected = True
             conditionalOrLoopType = 'switch'
+        if token.str == '?':
+            conditionalOrLoopDetected = True
+            conditionalOrLoopType = 'short-if'
         if conditionalOrLoopDetected:
-            if (token.str == '{' and conditionalOrLoopType != 'switch') or (token.str == ':' and conditionalOrLoopType == 'switch'): 
-                conditionalOrLoopDetected = False
-                temp.pop(0)
-                conditionalOrLoopList.append(temp)
-                temp = []
+            if conditionalOrLoopType == 'short-if':
+                for num in reversed(range(idx)):
+                    if cfg.tokenlist[num].str == '=':
+                        conditionalOrLoopDetected = False
+                        conditionalOrLoopType = ''
+                        temp.reverse()
+                        conditionalOrLoopList.append(temp)
+                        temp = []
+                        break
+                    else:
+                        if cfg.tokenlist[num].str != '(' and cfg.tokenlist[num].str != ')' and cfg.tokenlist[num].str != ';':
+                            temp.append(cfg.tokenlist[num].Id)
             else:
-                if token.str != '(' and token.str != ')' and token.str != ';':
-                    temp.append(token.Id)
+                if (token.str == '{' and conditionalOrLoopType != 'switch') or (token.str == ':' and conditionalOrLoopType == 'switch'): 
+                    conditionalOrLoopDetected = False
+                    conditionalOrLoopType = ''
+                    temp.pop(0)
+                    conditionalOrLoopList.append(temp)
+                    temp = []
+                else:
+                    if token.str != '(' and token.str != ')' and token.str != ';':
+                        temp.append(token.Id)
     print(conditionalOrLoopList)
     print('\n')
     for tokenIDList in conditionalOrLoopList:
