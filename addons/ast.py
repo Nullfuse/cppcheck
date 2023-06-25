@@ -39,7 +39,14 @@ def addon_core(dumpfile, quiet=False):
       # Add all the tokens that point to the same parent into a list 
       # astMap[v]'s value contains every node that points to it as the parent
       astMap[v].append(k)
+
+    for k, v in astMap.items():
+      print(str(k) + ' : ' + str(v))
+
+    print('\n')
     
+    '''
+    # Print AST Tree
     for k in astMap:
       currentID = k
       firstIteration = True
@@ -55,6 +62,7 @@ def addon_core(dumpfile, quiet=False):
         else:
           break
       print("\n")
+    '''
 
     conditionalOrLoopList = []
     
@@ -89,6 +97,8 @@ def addon_core(dumpfile, quiet=False):
         for tokenID in tokenIDList:
             print(tokensMap[tokenID])
 
+    '''
+    # Print AST Parent for Each Token in conditionalOrLoopList
     for tokenIDList in conditionalOrLoopList:
         for tokenID in tokenIDList:
             tempStr = ''
@@ -103,7 +113,25 @@ def addon_core(dumpfile, quiet=False):
                 else:
                     break
             print(tempStr + '\n')
-        
+    '''
+
+    tokenValueMap = defaultdict(list)
+    for tokenIDList in conditionalOrLoopList:
+        for tokenID in tokenIDList:
+            if tokensMap[tokenID].variableId:
+                for k, v in astMap.items():
+                    for tokenID_v in v:
+                        if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
+                            if tokensMap[k].getKnownIntValue():
+                                if tokensMap[k].getKnownIntValue() not in tokenValueMap[tokenID]:
+                                    tokenValueMap[tokenID].append(tokensMap[k].getKnownIntValue())
+                                    break
+
+    print('\n')
+                                    
+    for k, v in tokenValueMap.items():
+        print(str(k) + ' : ' + str(v))
+
 
 def get_args_parser():
     parser = cppcheckdata.ArgumentParser()
