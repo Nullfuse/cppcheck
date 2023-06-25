@@ -136,7 +136,7 @@ def addon_core(dumpfile, quiet=False):
                                     break
                                     
     for k, v in tokenValueMap.items():
-        print(tokensMap[k].str + ' ' + str(k) + ' : ' + str(v))
+        print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
 
 
 def get_args_parser():
