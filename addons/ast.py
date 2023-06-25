@@ -66,18 +66,23 @@ def addon_core(dumpfile, quiet=False):
     
     for cfg in data.configurations:
       conditionalOrLoopDetected = False
+      conditionalOrLoopType = ''
       temp = []
       for token in cfg.tokenlist:
         if token.str == 'if':
             conditionalOrLoopDetected = True
+            conditionalOrLoopType = 'if'
         if token.str == 'while':
             conditionalOrLoopDetected = True
+            conditionalOrLoopType = 'while'
         if token.str == 'for':
             conditionalOrLoopDetected = True
-        if token.str == 'switch':
+            conditionalOrLoopType = 'for'
+        if token.str == 'case':
             conditionalOrLoopDetected = True
+            conditionalOrLoopType = 'switch'
         if conditionalOrLoopDetected:
-            if token.str == '{': 
+            if (token.str == '{' and conditionalOrLoopType != 'switch') or (token.str == ':' and conditionalOrLoopType == 'switch'): 
                 conditionalOrLoopDetected = False
                 temp.pop(0)
                 conditionalOrLoopList.append(temp)
@@ -86,14 +91,15 @@ def addon_core(dumpfile, quiet=False):
                 if token.str != '(' and token.str != ')' and token.str != ';':
                     temp.append(token.Id)
     print(conditionalOrLoopList)
+    print('\n')
     for tokenIDList in conditionalOrLoopList:
         tempStr = ''
         for tokenID in tokenIDList:
             tempStr = tempStr + tokensMap[tokenID].str
         print(tempStr)
-        print('\n')
         for tokenID in tokenIDList:
             print(tokensMap[tokenID])
+        print('\n')
 
     '''
     # Print AST Parent for Each Token in conditionalOrLoopList
@@ -124,8 +130,6 @@ def addon_core(dumpfile, quiet=False):
                                 if tokensMap[k].getKnownIntValue() not in tokenValueMap[tokenID]:
                                     tokenValueMap[tokenID].append(tokensMap[k].getKnownIntValue())
                                     break
-
-    print('\n')
                                     
     for k, v in tokenValueMap.items():
         print(str(k) + ' : ' + str(v))
