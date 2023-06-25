@@ -100,12 +100,14 @@ def addon_core(dumpfile, quiet=False):
             elif conditionalOrLoopType == 'for':
                 if token.str == ';':
                     semicolonCount += 1
-                    conditionalOrLoopList.append(temp)
-                    temp = []
+                    if semicolonCount == 1:
+                        temp.pop(0)
                     if semicolonCount == 2:
                         semicolonCount = 0
                         conditionalOrLoopDetected = False
                         conditionalOrLoopType = ''
+                    conditionalOrLoopList.append(temp)
+                    temp = []
                 if token.str != '(' and token.str != ')' and token.str != ';':
                     temp.append(token.Id)
             else:
