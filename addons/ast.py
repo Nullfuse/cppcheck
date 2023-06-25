@@ -148,9 +148,10 @@ def addon_core(dumpfile, quiet=False):
                     for tokenID_v in v:
                         if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
                             if tokensMap[k].getKnownIntValue() is not None:
-                                if tokensMap[k].getKnownIntValue() not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
-                                    tokenValueMap[tokenID].append(tokensMap[k].getKnownIntValue())
-                                    break
+                                if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
+                                    if tokensMap[k].getKnownIntValue() not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
+                                        tokenValueMap[tokenID].append(tokensMap[k].getKnownIntValue())
+                                        break
                                     
     for k, v in tokenValueMap.items():
         print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
