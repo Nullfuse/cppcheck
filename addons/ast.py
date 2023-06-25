@@ -99,6 +99,10 @@ def addon_core(dumpfile, quiet=False):
         print(tempStr)
         for tokenID in tokenIDList:
             print(tokensMap[tokenID])
+            for cfg in data.configurations:
+                for value in cfg.valueflow:
+                    if tokensMap[tokenID].valuesId == value.Id:
+                        print(value)
         print('\n')
 
     '''
@@ -109,7 +113,7 @@ def addon_core(dumpfile, quiet=False):
             currentID = tokenID
             while True:
                 if currentID in astParentsMap:
-                    if tokensMap[astParentsMap[currentID]].getKnownIntValue():
+                    if tokensMap[astParentsMap[currentID]].getKnownIntValue() is not None:
                         tempStr = tempStr + ' ' + str(tokensMap[astParentsMap[currentID]].getKnownIntValue())
                     else:
                         tempStr = tempStr + ' ' + tokensMap[astParentsMap[currentID]].str
@@ -122,17 +126,17 @@ def addon_core(dumpfile, quiet=False):
     tokenValueMap = defaultdict(list)
     for tokenIDList in conditionalOrLoopList:
         for tokenID in tokenIDList:
-            if tokensMap[tokenID].variableId:
+            if tokensMap[tokenID].variableId is not None:
                 for k, v in astMap.items():
                     for tokenID_v in v:
                         if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
-                            if tokensMap[k].getKnownIntValue():
-                                if tokensMap[k].getKnownIntValue() not in tokenValueMap[tokenID]:
+                            if tokensMap[k].getKnownIntValue() is not None:
+                                if tokensMap[k].getKnownIntValue() not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
                                     tokenValueMap[tokenID].append(tokensMap[k].getKnownIntValue())
                                     break
                                     
     for k, v in tokenValueMap.items():
-        print(str(k) + ' : ' + str(v))
+        print(tokensMap[k].str + ' ' + str(k) + ' : ' + str(v))
 
 
 def get_args_parser():
