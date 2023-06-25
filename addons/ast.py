@@ -63,7 +63,7 @@ def addon_core(dumpfile, quiet=False):
     '''
 
     conditionalOrLoopList = []
-    
+    semicolonCount = 0
     for cfg in data.configurations:
       conditionalOrLoopDetected = False
       conditionalOrLoopType = ''
@@ -97,6 +97,17 @@ def addon_core(dumpfile, quiet=False):
                     else:
                         if cfg.tokenlist[num].str != '(' and cfg.tokenlist[num].str != ')' and cfg.tokenlist[num].str != ';':
                             temp.append(cfg.tokenlist[num].Id)
+            elif conditionalOrLoopType == 'for':
+                if token.str == ';':
+                    semicolonCount += 1
+                    conditionalOrLoopList.append(temp)
+                    temp = []
+                    if semicolonCount == 2:
+                        semicolonCount = 0
+                        conditionalOrLoopDetected = False
+                        conditionalOrLoopType = ''
+                if token.str != '(' and token.str != ')' and token.str != ';':
+                    temp.append(token.Id)
             else:
                 if (token.str == '{' and conditionalOrLoopType != 'switch') or (token.str == ':' and conditionalOrLoopType == 'switch'): 
                     conditionalOrLoopDetected = False
