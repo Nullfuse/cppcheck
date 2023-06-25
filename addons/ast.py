@@ -163,7 +163,6 @@ def addon_core(dumpfile, quiet=False):
                     for tokenID_v in v:
                         if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
                             if tokensMap[k].getKnownIntValue() is None and tokensMap[k].str == '=' and tokensMap[k].astParentId is None:
-                                print(tokensMap[k], tokensMap[k].next)
                                 if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
                                     tempStr = ''
                                     currentToken = tokensMap[k].next
