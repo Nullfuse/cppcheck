@@ -62,6 +62,7 @@ def addon_core(dumpfile, quiet=False):
       print("\n")
     '''
 
+    # Get the parameters or conditions in conditionals or loops
     conditionalOrLoopList = []
     semicolonCount = 0
     for cfg in data.configurations:
@@ -153,6 +154,7 @@ def addon_core(dumpfile, quiet=False):
             print(tempStr + '\n')
     '''
 
+    # Get the possible values of each token variable in conditionals or loops
     tokenValueMap = defaultdict(list)
     for tokenIDList in conditionalOrLoopList:
         for tokenID in tokenIDList:
@@ -160,10 +162,23 @@ def addon_core(dumpfile, quiet=False):
                 for k, v in astMap.items():
                     for tokenID_v in v:
                         if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
+                            if tokensMap[k].getKnownIntValue() is None and tokensMap[k].str == '=' and tokensMap[k].astParentId is None:
+                                print(tokensMap[k], tokensMap[k].next)
+                                if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
+                                    tempStr = ''
+                                    currentToken = tokensMap[k].next
+                                    while True:
+                                        tempStr = tempStr + currentToken.str
+                                        currentToken = currentToken.next
+                                        if currentToken.str == ';':
+                                            break
+                                    if tempStr not in tokenValueMap[tokenID]:
+                                        tokenValueMap[tokenID].append(tempStr)
+                                        break
                             if tokensMap[k].getKnownIntValue() is not None:
                                 if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
-                                    if tokensMap[k].getKnownIntValue() not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
-                                        tokenValueMap[tokenID].append(tokensMap[k].getKnownIntValue())
+                                    if str(tokensMap[k].getKnownIntValue()) not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
+                                        tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
                                         break
                                     
     for k, v in tokenValueMap.items():
