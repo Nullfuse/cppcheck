@@ -7,7 +7,6 @@ import os
 import re
 
 
-
 def addon_core(dumpfile, quiet=False):
     # load XML from .dump file
     data = cppcheckdata.CppcheckData(dumpfile)
@@ -20,7 +19,6 @@ def addon_core(dumpfile, quiet=False):
     srcfile = os.path.expanduser(srcfile)
     srcfile = os.path.normpath(srcfile)
 
-  
     tokensMap = {}
     astParentsMap = {}
     
