@@ -162,22 +162,23 @@ def addon_core(dumpfile, quiet=False):
                 for k, v in astMap.items():
                     if tokensMap[k].getKnownIntValue() is None:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
-                            if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
-                                if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and tokensMap[k].str != '=='):
+                            if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
+                                if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
                                     tempStr = ''
                                     currentToken = tokensMap[k]
-                                    while tokensMap[k].linenr == currentToken.previous.linenr and (currentToken.previous.str != '(' and currentToken.previous.previous.str != 'for'):
+                                    while tokensMap[k].linenr == currentToken.previous.linenr and currentToken.previous.str != ';' and (currentToken.previous.str != '(' and currentToken.previous.previous.str != 'for'):
                                         currentToken = currentToken.previous
                                     while True:
                                         tempStr = tempStr + currentToken.str
                                         currentToken = currentToken.next
-                                        if currentToken.str == ';':
+                                        if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
                                             break
                                     if tempStr not in tokenValueMap[tokenID]:
                                         tokenValueMap[tokenID].append(tempStr)
+                                        print(tempStr)
                     else:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
-                            if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
+                            if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
                                 if str(tokensMap[k].getKnownIntValue()) not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
                                     tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
 
