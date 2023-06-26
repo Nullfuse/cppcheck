@@ -162,10 +162,12 @@ def addon_core(dumpfile, quiet=False):
                 for k, v in astMap.items():
                     if tokensMap[k].getKnownIntValue() is None:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
-                            if tokensMap[k].str == '=' and tokensMap[k].astParentId is None:
-                                if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
+                            if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
+                                if tokensMap[k].astParentId is None and (tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and tokensMap[k].str != '==')):
                                     tempStr = ''
-                                    currentToken = tokensMap[k].next
+                                    currentToken = tokensMap[k]
+                                    while tokensMap[k].linenr == currentToken.previous.linenr:
+                                        currentToken = currentToken.previous
                                     while True:
                                         tempStr = tempStr + currentToken.str
                                         currentToken = currentToken.next
@@ -174,13 +176,11 @@ def addon_core(dumpfile, quiet=False):
                                     if tempStr not in tokenValueMap[tokenID]:
                                         tokenValueMap[tokenID].append(tempStr)
                     else:
-                        for tokenID_v in v:
-                            if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
-                                if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
-                                    if str(tokensMap[k].getKnownIntValue()) not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
-                                        tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
-                                        break
-                                    
+                        if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
+                            if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
+                                if str(tokensMap[k].getKnownIntValue()) not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
+                                    tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
+
     for k, v in tokenValueMap.items():
         print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
 
