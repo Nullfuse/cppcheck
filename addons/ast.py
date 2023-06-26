@@ -160,9 +160,9 @@ def addon_core(dumpfile, quiet=False):
         for tokenID in tokenIDList:
             if tokensMap[tokenID].variableId is not None:
                 for k, v in astMap.items():
-                    for tokenID_v in v:
-                        if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
-                            if tokensMap[k].getKnownIntValue() is None and tokensMap[k].str == '=' and tokensMap[k].astParentId is None:
+                    if tokensMap[k].getKnownIntValue() is None:
+                        if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
+                            if tokensMap[k].str == '=' and tokensMap[k].astParentId is None:
                                 if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
                                     tempStr = ''
                                     currentToken = tokensMap[k].next
@@ -173,8 +173,9 @@ def addon_core(dumpfile, quiet=False):
                                             break
                                     if tempStr not in tokenValueMap[tokenID]:
                                         tokenValueMap[tokenID].append(tempStr)
-                                        break
-                            if tokensMap[k].getKnownIntValue() is not None:
+                    else:
+                        for tokenID_v in v:
+                            if tokensMap[tokenID_v].variableId == tokensMap[tokenID].variableId:
                                 if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
                                     if str(tokensMap[k].getKnownIntValue()) not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
                                         tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
