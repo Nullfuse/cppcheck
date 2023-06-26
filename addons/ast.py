@@ -188,6 +188,7 @@ def addon_core(dumpfile, quiet=False):
                                                     break
                                                 tempStr = tempStr + currentToken.str
                                                 currentToken = currentToken.next
+                                            break
                                         if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
                                             break
                                     if tempStr not in tokenValueMap[tokenID] and tempStr != '':
