@@ -177,12 +177,18 @@ def addon_core(dumpfile, quiet=False):
                                             tempStr = ''
                                             while True:
                                                 if currentToken.str == ':':
-                                                    if tempStr not in tokenValueMap[tokenID]:
+                                                    if tokenValueMap[tokenID]:
+                                                        if tempStr != tokenValueMap[tokenID][-1]:
+                                                            tokenValueMap[tokenID].append(tempStr)
+                                                    else:
                                                         tokenValueMap[tokenID].append(tempStr)
                                                     currentToken = currentToken.next
                                                     tempStr = ''
                                                 if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
-                                                    if tempStr not in tokenValueMap[tokenID]:
+                                                    if tokenValueMap[tokenID]:
+                                                        if tempStr != tokenValueMap[tokenID][-1]:
+                                                            tokenValueMap[tokenID].append(tempStr)
+                                                    else:
                                                         tokenValueMap[tokenID].append(tempStr)
                                                     tempStr = ''
                                                     break
@@ -191,13 +197,21 @@ def addon_core(dumpfile, quiet=False):
                                             break
                                         if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
                                             break
-                                    if tempStr not in tokenValueMap[tokenID] and tempStr != '':
-                                        tokenValueMap[tokenID].append(tempStr)
+                                    if tempStr != '':
+                                        if tokenValueMap[tokenID]:
+                                            if tempStr != tokenValueMap[tokenID][-1]:
+                                                tokenValueMap[tokenID].append(tempStr)
+                                        else:
+                                            tokenValueMap[tokenID].append(tempStr)
                     else:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
                             if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
-                                if str(tokensMap[k].getKnownIntValue()) not in tokenValueMap[tokenID] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
-                                    tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
+                                if tokenValueMap[tokenID]:
+                                    if str(tokensMap[k].getKnownIntValue()) != tokenValueMap[tokenID][-1] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
+                                        tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
+                                else:
+                                    if tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
+                                        tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
 
     for k, v in tokenValueMap.items():
         print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
