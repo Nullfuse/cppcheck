@@ -207,10 +207,10 @@ def addon_core(dumpfile, quiet=False):
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
                             if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
                                 if tokenValueMap[tokenID]:
-                                    if str(tokensMap[k].getKnownIntValue()) != tokenValueMap[tokenID][-1] and tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
+                                    if str(tokensMap[k].getKnownIntValue()) != tokenValueMap[tokenID][-1] and (tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '==')):
                                         tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
                                 else:
-                                    if tokensMap[k].str != '==' and tokensMap[k].str != '!=' and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str:
+                                    if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
                                         tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
 
     for k, v in tokenValueMap.items():
