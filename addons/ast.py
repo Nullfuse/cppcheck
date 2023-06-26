@@ -7,6 +7,13 @@ import os
 import re
 
 
+def getValueOfParent(tokensMap, token):
+    currentToken = token
+    while currentToken.astParentId is not None:
+        currentToken = tokensMap[currentToken.astParentId]
+    return currentToken.getKnownIntValue()
+
+
 def addon_core(dumpfile, quiet=False):
     # load XML from .dump file
     data = cppcheckdata.CppcheckData(dumpfile)
@@ -178,16 +185,26 @@ def addon_core(dumpfile, quiet=False):
                                             while True:
                                                 if currentToken.str == ':':
                                                     if tokenValueMap[tokenID]:
-                                                        if tempStr != tokenValueMap[tokenID][-1]:
-                                                            tokenValueMap[tokenID].append(tempStr)
+                                                        valueOfASTParent = getValueOfParent(tokensMap, currentToken.previous)
+                                                        if valueOfASTParent is not None:
+                                                            if valueOfASTParent != tokenValueMap[tokenID][-1]:
+                                                                tokenValueMap[tokenID].append(str(valueOfASTParent))
+                                                        else: 
+                                                            if tempStr != tokenValueMap[tokenID][-1]:
+                                                                tokenValueMap[tokenID].append(tempStr)
                                                     else:
                                                         tokenValueMap[tokenID].append(tempStr)
                                                     currentToken = currentToken.next
                                                     tempStr = ''
                                                 if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
                                                     if tokenValueMap[tokenID]:
-                                                        if tempStr != tokenValueMap[tokenID][-1]:
-                                                            tokenValueMap[tokenID].append(tempStr)
+                                                        valueOfASTParent = getValueOfParent(tokensMap, currentToken.previous)
+                                                        if valueOfASTParent is not None:
+                                                            if valueOfASTParent != tokenValueMap[tokenID][-1]:
+                                                                tokenValueMap[tokenID].append(str(valueOfASTParent))
+                                                        else: 
+                                                            if tempStr != tokenValueMap[tokenID][-1]:
+                                                                tokenValueMap[tokenID].append(tempStr)
                                                     else:
                                                         tokenValueMap[tokenID].append(tempStr)
                                                     tempStr = ''
