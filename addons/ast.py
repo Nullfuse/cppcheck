@@ -121,6 +121,7 @@ def addon_core(dumpfile, quiet=False):
                 else:
                     if token.str != '(' and token.str != ')' and token.str != ';':
                         temp.append(token.Id)
+                        
     print(conditionalOrLoopList)
     print('\n')
     for tokenIDList in conditionalOrLoopList:
