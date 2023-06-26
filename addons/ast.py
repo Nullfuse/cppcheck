@@ -172,9 +172,25 @@ def addon_core(dumpfile, quiet=False):
                                     while True:
                                         tempStr = tempStr + currentToken.str
                                         currentToken = currentToken.next
+                                        if currentToken.str == '?':
+                                            currentToken = currentToken.next
+                                            tempStr = ''
+                                            while True:
+                                                if currentToken.str == ':':
+                                                    if tempStr not in tokenValueMap[tokenID]:
+                                                        tokenValueMap[tokenID].append(tempStr)
+                                                    currentToken = currentToken.next
+                                                    tempStr = ''
+                                                if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
+                                                    if tempStr not in tokenValueMap[tokenID]:
+                                                        tokenValueMap[tokenID].append(tempStr)
+                                                    tempStr = ''
+                                                    break
+                                                tempStr = tempStr + currentToken.str
+                                                currentToken = currentToken.next
                                         if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
                                             break
-                                    if tempStr not in tokenValueMap[tokenID]:
+                                    if tempStr not in tokenValueMap[tokenID] and tempStr != '':
                                         tokenValueMap[tokenID].append(tempStr)
                     else:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
