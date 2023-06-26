@@ -163,10 +163,10 @@ def addon_core(dumpfile, quiet=False):
                     if tokensMap[k].getKnownIntValue() is None:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
                             if tokensMap[k].linenr <= tokensMap[tokenID].linenr: # Only get the possible values before that line of code
-                                if tokensMap[k].astParentId is None and (tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and tokensMap[k].str != '==')):
+                                if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and tokensMap[k].str != '=='):
                                     tempStr = ''
                                     currentToken = tokensMap[k]
-                                    while tokensMap[k].linenr == currentToken.previous.linenr:
+                                    while tokensMap[k].linenr == currentToken.previous.linenr and (currentToken.previous.str != '(' and currentToken.previous.previous.str != 'for'):
                                         currentToken = currentToken.previous
                                     while True:
                                         tempStr = tempStr + currentToken.str
