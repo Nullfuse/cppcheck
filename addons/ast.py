@@ -175,7 +175,6 @@ def addon_core(dumpfile, quiet=False):
                                             break
                                     if tempStr not in tokenValueMap[tokenID]:
                                         tokenValueMap[tokenID].append(tempStr)
-                                        print(tempStr)
                     else:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
                             if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
