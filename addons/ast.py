@@ -21,6 +21,17 @@ def getScopeOfVariableDeclaration(tokensMap, variableId):
     return None
 
 
+def is_number(n):
+    is_number = True
+    try:
+        num = float(n)
+        # check for "nan" floats
+        is_number = num == num   # or use `math.isnan(num)`
+    except ValueError:
+        is_number = False
+    return is_number
+
+
 def addon_core(dumpfile, quiet=False):
     # load XML from .dump file
     data = cppcheckdata.CppcheckData(dumpfile)
@@ -78,6 +89,7 @@ def addon_core(dumpfile, quiet=False):
 
     # Get the parameters or conditions in conditionals or loops
     conditionalOrLoopList = []
+    isConstantList = []
     semicolonCount = 0
     for cfg in data.configurations:
       conditionalOrLoopDetected = False
@@ -93,9 +105,13 @@ def addon_core(dumpfile, quiet=False):
         if token.str == 'for':
             conditionalOrLoopDetected = True
             conditionalOrLoopType = 'for'
-        if token.str == 'case':
+        if token.str == 'switch':
             conditionalOrLoopDetected = True
             conditionalOrLoopType = 'switch'
+        if token.str == 'case':
+            conditionalOrLoopDetected = True
+            conditionalOrLoopType = 'case'
+            isConstantList.append(len(conditionalOrLoopList))
         if token.str == '?':
             conditionalOrLoopDetected = True
             conditionalOrLoopType = 'short-if'
@@ -126,7 +142,7 @@ def addon_core(dumpfile, quiet=False):
                 if token.str != '(' and token.str != ')' and token.str != ';':
                     temp.append(token.Id)
             else:
-                if (token.str == '{' and conditionalOrLoopType != 'switch') or (token.str == ':' and conditionalOrLoopType == 'switch'): 
+                if (token.str == '{' and conditionalOrLoopType != 'case') or (token.str == ':' and conditionalOrLoopType == 'case'): 
                     conditionalOrLoopDetected = False
                     conditionalOrLoopType = ''
                     temp.pop(0)
@@ -171,8 +187,15 @@ def addon_core(dumpfile, quiet=False):
 
     # Get the possible values of each token variable in conditionals or loops
     tokenValueMap = defaultdict(list)
-    for tokenIDList in conditionalOrLoopList:
+    for idx, tokenIDList in enumerate(conditionalOrLoopList):
         for tokenID in tokenIDList:
+            if idx in isConstantList:
+                tempStr = ''
+                for x in tokenIDList:
+                    tempStr = tempStr + tokensMap[x].str
+                if is_number(tempStr) == False:
+                    tokenValueMap[tokenID].append(tempStr)
+                break
             if tokensMap[tokenID].variableId is not None:
                 for k, v in astMap.items():
                     if tokensMap[k].getKnownIntValue() is None:
