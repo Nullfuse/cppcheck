@@ -14,6 +14,13 @@ def getValueOfParent(tokensMap, token):
     return currentToken.getKnownIntValue()
 
 
+def getScopeOfVariableDeclaration(tokensMap, variableId):
+    for k, v in tokensMap.items():
+        if v.variableId == variableId:
+            return v.scopeId
+    return None
+
+
 def addon_core(dumpfile, quiet=False):
     # load XML from .dump file
     data = cppcheckdata.CppcheckData(dumpfile)
@@ -227,12 +234,12 @@ def addon_core(dumpfile, quiet=False):
                                     if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
                                         if str(tokensMap[k].getKnownIntValue()) != tokenValueMap[tokenID][-1]:
                                             tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
-                                        if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId:
+                                        if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId or getScopeOfVariableDeclaration(tokensMap, tokensMap[tokenID].variableId) == tokensMap[k].astOperand1.scopeId:
                                             break
                                 else:
                                     if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
                                         tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
-                                        if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId:
+                                        if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId or getScopeOfVariableDeclaration(tokensMap, tokensMap[tokenID].variableId) == tokensMap[k].astOperand1.scopeId:
                                             break
 
     for k, v in tokenValueMap.items():
