@@ -233,6 +233,17 @@ def addon_core(dumpfile, quiet=False):
     for k, v in tokenValueMap.items():
         print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
 
+    print('\n')
+
+    output = ''
+    for k, v in tokenValueMap.items():
+        if 'threadIdx' in str(v) and (str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence') not in output:
+            if output != '':
+                output = output + ' ' + str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence'
+            else:
+                output = str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence'
+    print(output)
+
 
 def get_args_parser():
     parser = cppcheckdata.ArgumentParser()
