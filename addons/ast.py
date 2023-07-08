@@ -187,6 +187,7 @@ def addon_core(dumpfile, quiet=False):
 
     # Get the possible values of each token variable in conditionals or loops
     tokenValueMap = defaultdict(list)
+    lineNumberOfValue = defaultdict(list)
     for idx, tokenIDList in enumerate(conditionalOrLoopList):
         for tokenID in tokenIDList:
             if idx in isConstantList:
@@ -195,6 +196,7 @@ def addon_core(dumpfile, quiet=False):
                     tempStr = tempStr + tokensMap[x].str
                 if is_number(tempStr) == False:
                     tokenValueMap[tokenID].append(tempStr)
+                    lineNumberOfValue[tokenID].append(str(tokensMap[tokenIDList[0]].linenr))
                 break
             if tokensMap[tokenID].variableId is not None:
                 for k, v in astMap.items():
@@ -219,11 +221,14 @@ def addon_core(dumpfile, quiet=False):
                                                         if valueOfASTParent is not None:
                                                             if valueOfASTParent != tokenValueMap[tokenID][-1]:
                                                                 tokenValueMap[tokenID].append(str(valueOfASTParent))
+                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                                                         else: 
                                                             if tempStr != tokenValueMap[tokenID][-1]:
                                                                 tokenValueMap[tokenID].append(tempStr)
+                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                                                     else:
                                                         tokenValueMap[tokenID].append(tempStr)
+                                                        lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                                                     currentToken = currentToken.next
                                                     tempStr = ''
                                                 if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
@@ -232,11 +237,14 @@ def addon_core(dumpfile, quiet=False):
                                                         if valueOfASTParent is not None:
                                                             if valueOfASTParent != tokenValueMap[tokenID][-1]:
                                                                 tokenValueMap[tokenID].append(str(valueOfASTParent))
+                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                                                         else: 
                                                             if tempStr != tokenValueMap[tokenID][-1]:
                                                                 tokenValueMap[tokenID].append(tempStr)
+                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                                                     else:
                                                         tokenValueMap[tokenID].append(tempStr)
+                                                        lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                                                     tempStr = ''
                                                     break
                                                 tempStr = tempStr + currentToken.str
@@ -248,8 +256,10 @@ def addon_core(dumpfile, quiet=False):
                                         if tokenValueMap[tokenID]:
                                             if tempStr != tokenValueMap[tokenID][-1]:
                                                 tokenValueMap[tokenID].append(tempStr)
+                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                                         else:
                                             tokenValueMap[tokenID].append(tempStr)
+                                            lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
                     else:
                         if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
                             if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
@@ -257,15 +267,19 @@ def addon_core(dumpfile, quiet=False):
                                     if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
                                         if str(tokensMap[k].getKnownIntValue()) != tokenValueMap[tokenID][-1]:
                                             tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
+                                            lineNumberOfValue[tokenID].append(str(tokensMap[k].linenr))
                                         if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId or getScopeOfVariableDeclaration(tokensMap, tokensMap[tokenID].variableId) == tokensMap[k].astOperand1.scopeId:
                                             break
                                 else:
                                     if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
                                         tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
+                                        lineNumberOfValue[tokenID].append(str(tokensMap[k].linenr))
                                         if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId or getScopeOfVariableDeclaration(tokensMap, tokensMap[tokenID].variableId) == tokensMap[k].astOperand1.scopeId:
                                             break
 
     for k, v in tokenValueMap.items():
+        print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
+    for k, v in lineNumberOfValue.items():
         print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
 
     print('\n')
@@ -273,10 +287,14 @@ def addon_core(dumpfile, quiet=False):
     output = ''
     for k, v in tokenValueMap.items():
         if 'threadIdx' in str(v) and (str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence') not in output:
+            for idx, value in enumerate(v):
+                if 'threadIdx' in value:
+                    indexOfTarget = idx
+                    break
             if output != '':
-                output = output + ' ' + str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence'
+                output = output + ' ' + str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence' + ' ' + lineNumberOfValue[k][indexOfTarget]
             else:
-                output = str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence'
+                output = str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence' + ' ' + lineNumberOfValue[k][indexOfTarget]
     print(output)
 
 
