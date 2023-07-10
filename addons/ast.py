@@ -343,15 +343,15 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
     for k, v in mallocLineNumberMap.items():
         for lineNumber in v:
             if output != '':
-                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(mallocFrequencyMap[k])
+                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
             else:
-                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(mallocFrequencyMap[k])
+                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
     for k, v in cudaMallocLineNumberMap.items():
         for lineNumber in v:
             if output != '':
-                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(cudaMallocFrequencyMap[k])
+                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
             else:
-                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(cudaMallocFrequencyMap[k])
+                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
 
     print(output)
     print('\n\n')
