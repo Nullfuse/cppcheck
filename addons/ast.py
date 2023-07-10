@@ -14,6 +14,18 @@ def getValueOfParent(tokensMap, token):
     return currentToken.getKnownIntValue()
 
 
+def getTopMostValueOfAST(tokensMap, token):
+    currentToken = token
+    currentTopMostValue = currentToken.getKnownIntValue()
+    while currentToken.astParentId is not None:
+        currentToken = tokensMap[currentToken.astParentId]
+        if currentToken.getKnownIntValue() is not None:
+            currentTopMostValue = currentToken.getKnownIntValue()
+        else:
+            break
+    return currentTopMostValue
+
+
 def getScopeOfVariableDeclaration(tokensMap, variableId):
     for k, v in tokensMap.items():
         if v.variableId == variableId:
@@ -266,7 +278,85 @@ def checkThreadDivergence(data, tokensMap, astParentsMap, astMap):
 
 
 def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
-    return ''
+    # Key: Allocation Size -- Value: Line Number
+    mallocLineNumberMap = defaultdict(list)
+    # Key: Allocation Size -- Value: Frequency
+    mallocFrequencyMap = defaultdict(int)
+    # Key: Allocation Size -- Value: Line Number
+    cudaMallocLineNumberMap = defaultdict(list)
+    # Key: Allocation Size -- Value: Frequency
+    cudaMallocFrequencyMap = defaultdict(int)
+    allocationDetected = False
+    allocationType = ''
+    
+    for cfg in data.configurations:
+        for idx, token in enumerate(cfg.tokenlist):
+            if token.str == 'malloc':
+                allocationDetected = True
+                allocationType = 'malloc'
+            if token.str == 'cudaMalloc':
+                allocationDetected = True
+                allocationType = 'cudaMalloc'
+            if allocationDetected:
+                if token.str == ';':
+                    currToken = token
+                    while currToken.str == ';' or currToken.str == ')':
+                        currToken = currToken.previous
+                    if getTopMostValueOfAST(tokensMap, currToken) is not None:
+                        allocationValue = getTopMostValueOfAST(tokensMap, currToken)
+                        if allocationType == 'malloc':
+                            mallocFrequencyMap[allocationValue] += 1
+                            mallocLineNumberMap[allocationValue].append(currToken.linenr)
+                        if allocationType == 'cudaMalloc':
+                            cudaMallocFrequencyMap[allocationValue] += 1
+                            cudaMallocLineNumberMap[allocationValue].append(currToken.linenr)
+                    allocationDetected = False
+                    allocationType = ''
+
+    print('mallocFrequencyMap:')
+    for k, v in mallocFrequencyMap.items():
+        print(str(k) + ' : ' + str(v))
+    print('\n')
+    print('mallocLineNumberMap:')
+    for k, v in mallocLineNumberMap.items():
+        print(str(k) + ' : ' + str(v))
+    print('\n')
+    print('cudaMallocFrequencyMap:')
+    for k, v in cudaMallocFrequencyMap.items():
+        print(str(k) + ' : ' + str(v))
+    print('\n')
+    print('cudaMallocLineNumberMap:')
+    for k, v in cudaMallocLineNumberMap.items():
+        print(str(k) + ' : ' + str(v))
+
+    for k, v in mallocFrequencyMap.items():
+        if k in cudaMallocFrequencyMap:
+            if mallocFrequencyMap[k] == cudaMallocFrequencyMap[k]:
+                del mallocFrequencyMap[k]
+                del mallocLineNumberMap[k]
+                del cudaMallocFrequencyMap[k]
+                del cudaMallocLineNumberMap[k]
+
+    print('\n')
+    
+    output = ''
+    for k, v in mallocLineNumberMap.items():
+        for lineNumber in v:
+            if output != '':
+                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(mallocFrequencyMap[k])
+            else:
+                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(mallocFrequencyMap[k])
+    for k, v in cudaMallocLineNumberMap.items():
+        for lineNumber in v:
+            if output != '':
+                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(cudaMallocFrequencyMap[k])
+            else:
+                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(cudaMallocFrequencyMap[k])
+
+    print(output)
+    print('\n\n')
+
+    return output
     
 
 def addon_core(dumpfile, quiet=False):
