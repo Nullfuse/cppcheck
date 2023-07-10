@@ -16,11 +16,14 @@ def getValueOfParent(tokensMap, token):
 
 def getTopMostValueOfAST(tokensMap, token):
     currentToken = token
-    currentTopMostValue = currentToken.getKnownIntValue()
+    # currentTopMostValue = currentToken.getKnownIntValue()
+    currentTopMostValue = currentToken.values[0].intvalue
     while currentToken.astParentId is not None:
         currentToken = tokensMap[currentToken.astParentId]
-        if currentToken.getKnownIntValue() is not None:
-            currentTopMostValue = currentToken.getKnownIntValue()
+        # if currentToken.getKnownIntValue() is not None:
+        if currentToken.values:
+            # currentTopMostValue = currentToken.getKnownIntValue()
+            currentTopMostValue = currentToken.values[0].intvalue
         else:
             break
     return currentTopMostValue
