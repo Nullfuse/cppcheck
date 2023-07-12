@@ -281,26 +281,50 @@ def checkThreadDivergence(data, tokensMap, astParentsMap, astMap):
 
 
 def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
-    # Key: Allocation Size -- Value: Line Number
-    mallocLineNumberMap = defaultdict(list)
-    # Key: Allocation Size -- Value: Frequency
-    mallocFrequencyMap = defaultdict(int)
-    # Key: Allocation Size -- Value: Line Number
-    cudaMallocLineNumberMap = defaultdict(list)
-    # Key: Allocation Size -- Value: Frequency
-    cudaMallocFrequencyMap = defaultdict(int)
+    # Key: VariableID -- Value: Allocation Size
+    mallocMap = defaultdict(list)
+    cudaMallocMap = defaultdict(list)
     allocationDetected = False
     allocationType = ''
+    cudaMallocFunctionCall = True
+    deviceOrHostPointerVariableID = ''
+    variableFound = False
     
     for cfg in data.configurations:
         for idx, token in enumerate(cfg.tokenlist):
             if token.str == 'malloc':
                 allocationDetected = True
                 allocationType = 'malloc'
+                deviceOrHostPointerVariableID = ''
+                variableFound = False
+                currToken = token
+                while currToken.linenr == token.linenr:
+                    if currToken.variableId is not None:
+                        deviceOrHostPointerVariableID = currToken.variableId
+                        variableFound = True
+                        break
+                    currToken = currToken.previous
             if token.str == 'cudaMalloc':
                 allocationDetected = True
                 allocationType = 'cudaMalloc'
+                cudaMallocFunctionCall = False
+                deviceOrHostPointerVariableID = ''
+                variableFound = False
+                currToken = token
+                while currToken.linenr == token.linenr:
+                    if currToken.str == '=':
+                        cudaMallocFunctionCall = False
+                    if cudaMallocFunctionCall == False:
+                        if currToken.variableId is not None:
+                            deviceOrHostPointerVariableID = currToken.variableId
+                            variableFound = True
+                            break
+                    currToken = currToken.previous
             if allocationDetected:
+                if allocationType == 'cudaMalloc' and cudaMallocFunctionCall and not variableFound:
+                    if token.variableId is not None:
+                        deviceOrHostPointerVariableID = token.variableId
+                        variableFound = True
                 if token.str == ';':
                     currToken = token
                     while currToken.str == ';' or currToken.str == ')':
@@ -308,28 +332,21 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                     if getTopMostValueOfAST(tokensMap, currToken) is not None:
                         allocationValue = getTopMostValueOfAST(tokensMap, currToken)
                         if allocationType == 'malloc':
-                            mallocFrequencyMap[allocationValue] += 1
-                            mallocLineNumberMap[allocationValue].append(currToken.linenr)
+                            mallocMap[deviceOrHostPointerVariableID].append(str(allocationValue))
                         if allocationType == 'cudaMalloc':
-                            cudaMallocFrequencyMap[allocationValue] += 1
-                            cudaMallocLineNumberMap[allocationValue].append(currToken.linenr)
+                            cudaMallocMap[deviceOrHostPointerVariableID].append(str(allocationValue))
                     allocationDetected = False
                     allocationType = ''
+                    cudaMallocFunctionCall = True
+                    deviceOrHostPointerVariableID = ''
+                    variableFound = False
 
-    print('mallocFrequencyMap:')
-    for k, v in mallocFrequencyMap.items():
+    print('mallocMap:')
+    for k, v in mallocMap.items():
         print(str(k) + ' : ' + str(v))
     print('\n')
-    print('mallocLineNumberMap:')
-    for k, v in mallocLineNumberMap.items():
-        print(str(k) + ' : ' + str(v))
-    print('\n')
-    print('cudaMallocFrequencyMap:')
-    for k, v in cudaMallocFrequencyMap.items():
-        print(str(k) + ' : ' + str(v))
-    print('\n')
-    print('cudaMallocLineNumberMap:')
-    for k, v in cudaMallocLineNumberMap.items():
+    print('cudaMallocMap:')
+    for k, v in cudaMallocMap.items():
         print(str(k) + ' : ' + str(v))
 
     for k, v in mallocFrequencyMap.items():
