@@ -324,8 +324,8 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                 allocationDetected = True
                 allocationType = 'cudaMalloc'
                 deviceOrHostLinkID = token.next.linkId
-                cudaMallocFunctionCall = True
                 deviceOrHostPointerVariableID = None
+                cudaMallocFunctionCall = True
                 variableFound = False
                 currToken = token
                 while currToken.linenr == token.linenr:
