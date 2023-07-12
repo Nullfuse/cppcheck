@@ -389,7 +389,10 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                 tempStr += tokensMap[tokenID].str
             tempStr += '\t'
         print(str(k) + ' : ' + tempStr)
+        
+    print('\n')
 
+    print('allocationValueMap:')
     print(cudaMemcpyList)
     print('\n')
     for cudaMemcpyFunctionCall in cudaMemcpyList:
