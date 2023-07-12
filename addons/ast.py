@@ -282,8 +282,7 @@ def checkThreadDivergence(data, tokensMap, astParentsMap, astMap):
 
 def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
     # Key: VariableID -- Value: Allocation Size
-    mallocMap = defaultdict(list)
-    cudaMallocMap = defaultdict(list)
+    allocationValueMap = defaultdict(list)
     allocationDetected = False
     allocationType = ''
     cudaMallocFunctionCall = True
@@ -292,6 +291,7 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
     
     for cfg in data.configurations:
         for idx, token in enumerate(cfg.tokenlist):
+            if token.str == '
             if token.str == 'malloc':
                 allocationDetected = True
                 allocationType = 'malloc'
@@ -331,22 +331,15 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                         currToken = currToken.previous
                     if getTopMostValueOfAST(tokensMap, currToken) is not None:
                         allocationValue = getTopMostValueOfAST(tokensMap, currToken)
-                        if allocationType == 'malloc':
-                            mallocMap[deviceOrHostPointerVariableID].append(str(allocationValue))
-                        if allocationType == 'cudaMalloc':
-                            cudaMallocMap[deviceOrHostPointerVariableID].append(str(allocationValue))
+                        allocationValueMap[deviceOrHostPointerVariableID].append(str(allocationValue))
                     allocationDetected = False
                     allocationType = ''
                     cudaMallocFunctionCall = True
                     deviceOrHostPointerVariableID = ''
                     variableFound = False
 
-    print('mallocMap:')
-    for k, v in mallocMap.items():
-        print(str(k) + ' : ' + str(v))
-    print('\n')
-    print('cudaMallocMap:')
-    for k, v in cudaMallocMap.items():
+    print('allocationValueMap:')
+    for k, v in allocationValueMap.items():
         print(str(k) + ' : ' + str(v))
 
     for k, v in mallocFrequencyMap.items():
