@@ -333,19 +333,19 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                 if allocationType == 'cudaMemcpy':
                     if token.str == ',':
                         parameterCount += 1
+                        if parameterCount == 1:
+                            tempParam.pop(0)
+                            tempParam.pop(0)
+                        temp.append(tempParam)
+                        tempParam = []
                         if parameterCount == 3:
                             parameterCount = 0
                             allocationDetected = False
                             allocationType = ''
                             cudaMemcpyList.append(temp)
                             temp = []
-                            tempParam = []
-                        else:
-                            temp.append(tempParam)
-                            tempParam = []
                     else:
-                        if token.str != '(' and token.str != ')' and token.str != ';':
-                            tempParam.append(token.Id)
+                        tempParam.append(token.Id)
                 else:
                     if allocationType == 'cudaMalloc' and cudaMallocFunctionCall and not variableFound:
                         if token.variableId is not None:
