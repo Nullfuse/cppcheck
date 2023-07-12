@@ -287,24 +287,29 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
     # Key: VariableID -- Value: Allocation Size
     allocationValueMap = defaultdict(list)
     allocationDetected = False
-    allocationType = ''
+    allocationType = None
     cudaMallocFunctionCall = True
-    deviceOrHostPointerVariableID = ''
+    deviceOrHostPointerVariableID = None
     variableFound = False
     cudaMemcpyList = []
     parameterCount = 0
     temp = []
     tempParam = []
+    deviceOrHostLinkID = None
 
     for cfg in data.configurations:
-        for idx, token in enumerate(cfg.tokenlist):
+        token_iter = enumerate(cfg.tokenlist)
+        for idx, token in token_iter:
             if token.str == 'cudaMemcpy':
                 allocationDetected = True
                 allocationType = 'cudaMemcpy'
+                next(token_iter, None)
+                continue
             if token.str == 'malloc':
                 allocationDetected = True
                 allocationType = 'malloc'
-                deviceOrHostPointerVariableID = ''
+                deviceOrHostLinkID = token.next.linkId
+                deviceOrHostPointerVariableID = None
                 variableFound = False
                 currToken = token
                 while currToken.linenr == token.linenr:
@@ -313,11 +318,14 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                         variableFound = True
                         break
                     currToken = currToken.previous
+                next(token_iter, None)
+                continue
             if token.str == 'cudaMalloc':
                 allocationDetected = True
                 allocationType = 'cudaMalloc'
-                cudaMallocFunctionCall = False
-                deviceOrHostPointerVariableID = ''
+                deviceOrHostLinkID = token.next.linkId
+                cudaMallocFunctionCall = True
+                deviceOrHostPointerVariableID = None
                 variableFound = False
                 currToken = token
                 while currToken.linenr == token.linenr:
@@ -329,44 +337,55 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                             variableFound = True
                             break
                     currToken = currToken.previous
+                next(token_iter, None)
+                continue
             if allocationDetected:
                 if allocationType == 'cudaMemcpy':
                     if token.str == ',':
                         parameterCount += 1
-                        if parameterCount == 1:
-                            tempParam.pop(0)
-                            tempParam.pop(0)
                         temp.append(tempParam)
                         tempParam = []
                         if parameterCount == 3:
                             parameterCount = 0
                             allocationDetected = False
-                            allocationType = ''
+                            allocationType = None
                             cudaMemcpyList.append(temp)
                             temp = []
                     else:
                         tempParam.append(token.Id)
                 else:
-                    if allocationType == 'cudaMalloc' and cudaMallocFunctionCall and not variableFound:
+                    if allocationType == 'cudaMalloc' and cudaMallocFunctionCall and variableFound == False:
                         if token.variableId is not None:
                             deviceOrHostPointerVariableID = token.variableId
-                            variableFound = True
-                    if token.str == ';':
-                        currToken = token
-                        while currToken.str == ';' or currToken.str == ')':
-                            currToken = currToken.previous
-                        if getTopMostValueOfAST(tokensMap, currToken) is not None:
-                            allocationValue = getTopMostValueOfAST(tokensMap, currToken)
-                            allocationValueMap[deviceOrHostPointerVariableID].append(str(allocationValue))
-                        allocationDetected = False
-                        allocationType = ''
-                        cudaMallocFunctionCall = True
-                        deviceOrHostPointerVariableID = ''
-                        variableFound = False
+                        if token.str == ',':
+                            if deviceOrHostPointerVariableID is not None:
+                                variableFound = True
+                            else:
+                                allocationDetected = False
+                                allocationType = None
+                                cudaMallocFunctionCall = True
+                                deviceOrHostPointerVariableID = None
+                                variableFound = False
+                                deviceOrHostLinkID = None
+                    else:
+                        if token.Id == deviceOrHostLinkID:
+                            allocationValueMap[deviceOrHostPointerVariableID].append(tempParam)
+                            tempParam = []
+                            allocationDetected = False
+                            allocationType = None
+                            cudaMallocFunctionCall = True
+                            deviceOrHostPointerVariableID = None
+                            variableFound = False
+                            deviceOrHostLinkID = None
+                        else:
+                            tempParam.append(token.Id)
 
     print('allocationValueMap:')
     for k, v in allocationValueMap.items():
         print(str(k) + ' : ' + str(v))
+        for list_v in v:
+            for tokenID in list_v:
+                print(tokensMap[tokenID].str)
 
     print(cudaMemcpyList)
     print('\n')
