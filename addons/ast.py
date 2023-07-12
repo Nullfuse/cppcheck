@@ -383,9 +383,12 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
     print('allocationValueMap:')
     for k, v in allocationValueMap.items():
         print(str(k) + ' : ' + str(v))
+        tempStr = ''
         for list_v in v:
             for tokenID in list_v:
-                print(tokensMap[tokenID].str)
+                tempStr += tokensMap[tokenID].str
+            tempStr += '\t'
+        print(str(k) + ' : ' + tempStr)
 
     print(cudaMemcpyList)
     print('\n')
@@ -393,7 +396,8 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
         tempStr = ''
         for cudaMemcpyFunctionParameter in cudaMemcpyFunctionCall:
             for tokenID in cudaMemcpyFunctionParameter:
-                tempStr = tempStr + tokensMap[tokenID].str
+                tempStr += tokensMap[tokenID].str
+            tempStr += '\t'
         print(tempStr)
         for cudaMemcpyFunctionParameter in cudaMemcpyFunctionCall:
             for tokenID in cudaMemcpyFunctionParameter:
