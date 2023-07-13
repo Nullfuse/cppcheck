@@ -448,7 +448,7 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
         inaccurateAllocationFlag_Dst = False
         for idx, value in enumerate(cudaMemcpyDst_values):
             if idx % 2 == 0: # Even ; Compare Numerical Value
-                if value is not None and cudaMemcpyCount_value_literal is not None:
+                if value is not None and cudaMemcpyCount_value_literal is not None and is_number(value) and is_number(cudaMemcpyCount_value_literal):
                     if float(value) < float(cudaMemcpyCount_value_literal):
                         inaccurateAllocationFlag_Dst = True
                     break
@@ -460,7 +460,7 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
         inaccurateAllocationFlag_Src = False
         for idx, value in enumerate(cudaMemcpySrc_values):
             if idx % 2 == 0: # Even ; Compare Numerical Value
-                if value is not None and cudaMemcpyCount_value_literal is not None:
+                if value is not None and cudaMemcpyCount_value_literal is not None and is_number(value) and is_number(cudaMemcpyCount_value_literal):
                     if float(value) < float(cudaMemcpyCount_value_literal):
                         inaccurateAllocationFlag_Src = True
                     break
