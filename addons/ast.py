@@ -15,17 +15,18 @@ def getValueOfParent(tokensMap, token):
 
 
 def getTopMostValueOfAST(tokensMap, token):
-    currentToken = token
-    # currentTopMostValue = currentToken.getKnownIntValue()
-    if currentToken.values:
+    currentToken = tokensMap[token]
+    if currentToken.getKnownIntValue() is not None:
+        currentTopMostValue = currentToken.getKnownIntValue()
+    elif currentToken.values:
         currentTopMostValue = currentToken.values[0].intvalue
     else:
-        return None
+        currentTopMostValue = None
     while currentToken.astParentId is not None:
         currentToken = tokensMap[currentToken.astParentId]
-        # if currentToken.getKnownIntValue() is not None:
-        if currentToken.values:
-            # currentTopMostValue = currentToken.getKnownIntValue()
+        if currentToken.getKnownIntValue() is not None:
+            currentTopMostValue = currentToken.getKnownIntValue()
+        elif currentToken.values:
             currentTopMostValue = currentToken.values[0].intvalue
         else:
             break
@@ -48,6 +49,21 @@ def is_number(n):
     except ValueError:
         is_number = False
     return is_number
+
+
+def getValueOrStringList(tokensMap, list, scopeToken):
+    output = []
+    for tokenList in reversed(list):
+        if tokensMap[scopeToken].linenr >= tokensMap[tokenList[0]].linenr:
+            tempValue = getTopMostValueOfAST(tokensMap, tokenList[0])
+            output.append(str(tempValue))
+            tempStr = ''
+            for tokenID in tokenList:
+                tempStr += tokensMap[tokenID].str
+            output.append(tempStr)
+            if tokensMap[scopeToken].scopeId == tokensMap[tokenList[0]].scopeId:
+                break
+    return output
 
 
 def checkThreadDivergence(data, tokensMap, astParentsMap, astMap):    
@@ -410,29 +426,65 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
                         if tokensMap[tokenID].valuesId == value.Id:
                             print(value)
         print('\n')
-
-    print('\n')
-    '''
-    output = ''
     
-    for k, v in mallocLineNumberMap.items():
-        for lineNumber in v:
-            if output != '':
-                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
+    output = ''
+    for cudaMemcpyFunctionCall in cudaMemcpyList:
+        if len(cudaMemcpyFunctionCall) != 3:
+            continue
+        if len(cudaMemcpyFunctionCall[0]) != 1 or len(cudaMemcpyFunctionCall[1]) != 1:
+            break
+        cudaMemcpyDst = allocationValueMap[tokensMap[cudaMemcpyFunctionCall[0][0]].variableId]
+        cudaMemcpyDst_values = getValueOrStringList(tokensMap, cudaMemcpyDst, cudaMemcpyFunctionCall[2][0])
+        cudaMemcpySrc = allocationValueMap[tokensMap[cudaMemcpyFunctionCall[1][0]].variableId]
+        cudaMemcpySrc_values = getValueOrStringList(tokensMap, cudaMemcpySrc, cudaMemcpyFunctionCall[2][0])
+        cudaMemcpyCount = cudaMemcpyFunctionCall[2]
+        cudaMemcpyCount_value_literal = getTopMostValueOfAST(tokensMap, cudaMemcpyCount[0])
+        cudaMemcpyCount_value_string = ''
+        for tokenID in cudaMemcpyCount:
+            cudaMemcpyCount_value_string += tokensMap[tokenID].str        
+                
+        print(str(cudaMemcpyDst_values), str(cudaMemcpySrc_values), str(cudaMemcpyCount_value_literal), str(cudaMemcpyCount_value_string))
+        
+        inaccurateAllocationFlag_Dst = False
+        for idx, value in enumerate(cudaMemcpyDst_values):
+            if idx % 2 == 0: # Even ; Compare Numerical Value
+                if value is not None and cudaMemcpyCount_value_literal is not None:
+                    if float(value) < float(cudaMemcpyCount_value_literal):
+                        inaccurateAllocationFlag_Dst = True
+                    break
             else:
-                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
-    for k, v in cudaMallocLineNumberMap.items():
-        for lineNumber in v:
-            if output != '':
-                output = output + ' ' + str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
+                if value != cudaMemcpyCount_value_string:
+                    inaccurateAllocationFlag_Dst = True
+                    break
+
+        inaccurateAllocationFlag_Src = False
+        for idx, value in enumerate(cudaMemcpySrc_values):
+            if idx % 2 == 0: # Even ; Compare Numerical Value
+                if value is not None and cudaMemcpyCount_value_literal is not None:
+                    if float(value) < float(cudaMemcpyCount_value_literal):
+                        inaccurateAllocationFlag_Src = True
+                    break
             else:
-                output = str(lineNumber) + ' ' + 'possible_inaccurate_allocation' + ' ' + str(k)
+                if value != cudaMemcpyCount_value_string:
+                    inaccurateAllocationFlag_Src = True
+                    break
 
-    print(output)
-    print('\n\n')
-    '''
+        print('Dst: ' + str(inaccurateAllocationFlag_Dst), 'Src: ' + str(inaccurateAllocationFlag_Src))
 
-    return ''
+        print('\n')
+
+        if inaccurateAllocationFlag_Dst and inaccurateAllocationFlag_Src:
+            inaccurateAllocationFlag_Dst = False
+            inaccurateAllocationFlag_Src = False
+            output = ' '.join([output, (str(tokensMap[cudaMemcpyFunctionCall[2][0]].linenr) + ' ' + 'possible_inaccurate_allocation' + ' ' + '2')]).strip()
+        if inaccurateAllocationFlag_Dst:
+            inaccurateAllocationFlag_Dst = False
+            output = ' '.join([output, (str(tokensMap[cudaMemcpyFunctionCall[2][0]].linenr) + ' ' + 'possible_inaccurate_allocation' + ' ' + '0')]).strip()
+        if inaccurateAllocationFlag_Src:
+            inaccurateAllocationFlag_Src = False
+            output = ' '.join([output, (str(tokensMap[cudaMemcpyFunctionCall[2][0]].linenr) + ' ' + 'possible_inaccurate_allocation' + ' ' + '1')]).strip()
+    
+    return output
     
 
 def addon_core(dumpfile, quiet=False):
