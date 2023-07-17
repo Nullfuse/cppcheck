@@ -66,6 +66,13 @@ def getValueOrStringList(tokensMap, list, scopeToken):
     return output
 
 
+def splitter(txt, delim):
+    for i in txt:
+        if i in delim:
+            txt = txt.replace(i, ' ' + i + ' ')
+    return txt.split()
+
+
 def checkThreadDivergence(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap):    
     '''
     # Print AST Tree
@@ -439,10 +446,26 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variables
         cudaMemcpySrc_values = getValueOrStringList(tokensMap, cudaMemcpySrc, cudaMemcpyFunctionCall[2][0])
         cudaMemcpyCount = cudaMemcpyFunctionCall[2]
         cudaMemcpyCount_value_literal = getTopMostValueOfAST(tokensMap, cudaMemcpyCount[0])
+        if cudaMemcpyCount_value_literal is None and len(cudaMemcpyFunctionCall[2]) == 1 and tokensMap[cudaMemcpyFunctionCall[2][0]].variableId is not None:
+            for possibleValue in variableValuesMap[tokensMap[cudaMemcpyFunctionCall[2][0]].variableId]:
+                if possibleValue[3] < tokensMap[cudaMemcpyFunctionCall[2][0]].linenr:
+                    if is_number(possibleValue[0]):
+                        cudaMemcpyCount_value_literal = possibleValue[0]
+                        break
+                
         cudaMemcpyCount_value_string = ''
         for tokenID in cudaMemcpyCount:
-            cudaMemcpyCount_value_string += tokensMap[tokenID].str        
-                
+            cudaMemcpyCount_value_string += tokensMap[tokenID].str
+
+        operators = ['**','*', '/', '+', '-', '//', '>>', '<<', '|', '&', '^']
+        totalOperatorCount = 0
+        for operator in operators:
+            totalOperatorCount += cudaMemcpyCount_value_string.count(operator)
+
+        cudaMemcpyCount_tuple = None
+        if totalOperatorCount == 1:
+            cudaMemcpyCount_tuple = tuple((splitter(cudaMemcpyCount_value_string, operators)[1], sorted(tuple((splitter(cudaMemcpyCount_value_string, operators)[0], splitter(cudaMemcpyCount_value_string, operators)[2]))) ))
+            
         print(str(cudaMemcpyDst_values), str(cudaMemcpySrc_values), str(cudaMemcpyCount_value_literal), str(cudaMemcpyCount_value_string))
         
         inaccurateAllocationFlag_Dst = False
@@ -453,9 +476,22 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variables
                         inaccurateAllocationFlag_Dst = True
                     break
             else:
-                if value != cudaMemcpyCount_value_string:
-                    inaccurateAllocationFlag_Dst = True
-                    break
+                totalOperatorCount = 0
+                for operator in operators:
+                    totalOperatorCount += value.count(operator)
+                    
+                value_tuple = None
+                if totalOperatorCount == 1:
+                    value_tuple = tuple((splitter(value, operators)[1], sorted(tuple((splitter(value, operators)[0], splitter(value, operators)[2]))) ))
+
+                if cudaMemcpyCount_tuple is not None and value_tuple is not None:
+                    if value_tuple != cudaMemcpyCount_tuple:
+                        inaccurateAllocationFlag_Dst = True
+                        break
+                else:
+                    if value != cudaMemcpyCount_value_string:
+                        inaccurateAllocationFlag_Dst = True
+                        break
 
         inaccurateAllocationFlag_Src = False
         for idx, value in enumerate(cudaMemcpySrc_values):
@@ -465,9 +501,22 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variables
                         inaccurateAllocationFlag_Src = True
                     break
             else:
-                if value != cudaMemcpyCount_value_string:
-                    inaccurateAllocationFlag_Src = True
-                    break
+                totalOperatorCount = 0
+                for operator in operators:
+                    totalOperatorCount += value.count(operator)
+                    
+                value_tuple = None
+                if totalOperatorCount == 1:
+                    value_tuple = tuple((splitter(value, operators)[1], sorted(tuple((splitter(value, operators)[0], splitter(value, operators)[2]))) ))
+
+                if cudaMemcpyCount_tuple is not None and value_tuple is not None:
+                    if value_tuple != cudaMemcpyCount_tuple:
+                        inaccurateAllocationFlag_Src = True
+                        break
+                else:
+                    if value != cudaMemcpyCount_value_string:
+                        inaccurateAllocationFlag_Src = True
+                        break
 
         print('Dst: ' + str(inaccurateAllocationFlag_Dst), 'Src: ' + str(inaccurateAllocationFlag_Src))
 
