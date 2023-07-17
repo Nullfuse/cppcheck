@@ -66,7 +66,7 @@ def getValueOrStringList(tokensMap, list, scopeToken):
     return output
 
 
-def checkThreadDivergence(data, tokensMap, astParentsMap, astMap):    
+def checkThreadDivergence(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap):    
     '''
     # Print AST Tree
     for k in astMap:
@@ -299,7 +299,7 @@ def checkThreadDivergence(data, tokensMap, astParentsMap, astMap):
     return output
 
 
-def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap):
+def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap):
     # Key: VariableID -- Value: Allocation Size
     allocationValueMap = defaultdict(list)
     allocationDetected = False
@@ -501,16 +501,65 @@ def addon_core(dumpfile, quiet=False):
 
     tokensMap = {}
     astParentsMap = {}
+    variablesMap = {}
+    variableValuesMap = defaultdict(list)
+
+    compoundAssignmentOperators = ['+=', '-=', '*=', '/=', '%=', '>>=', '<<=', '&=', '^=', '|=']
     
     for cfg in data.configurations:
       for token in cfg.tokenlist:
         if token.Id not in tokensMap:
-          tokensMap[token.Id] = token
-    
+            tokensMap[token.Id] = token
+        if token.variableId is not None and token.variableId not in variablesMap:
+            variablesMap[token.variableId] = token.str
+            
       for token in reversed(cfg.tokenlist):
         if token.astParentId in tokensMap:
           # Each key-value pair in astParentsMap represents an edge in the AST
           astParentsMap[token.Id] = token.astParentId
+        if token.next is not None:
+            if (token.variableId is not None and (token.next.str in compoundAssignmentOperators or token.next.str == '=')) or (token.next.variableId is not None and (token.str == '++' or token.str == '--')):
+                tempStr = ''
+                currVariableID = ''
+                scopeID = ''
+                lineNum = ''
+                columnNum = ''
+                if token.variableId is not None and token.next.getKnownIntValue() is not None:
+                    tempStr = str(token.next.getKnownIntValue())
+                    currVariableID = token.variableId
+                    scopeID = token.scopeId
+                    lineNum = token.linenr
+                    columnNum = token.column
+                elif token.next.variableId is not None and token.getKnownIntValue() is not None:
+                    tempStr = str(token.getKnownIntValue())
+                    currVariableID = token.next.variableId
+                    scopeID = token.next.scopeId
+                    lineNum = token.next.linenr
+                    columnNum = token.next.column
+                else:
+                    if token.variableId is not None:
+                        currVariableID = token.variableId
+                        scopeID = token.scopeId
+                        lineNum = token.linenr
+                        columnNum = token.column
+                    else:
+                        currVariableID = token.next.variableId
+                        scopeID = token.next.scopeId
+                        lineNum = token.next.linenr
+                        columnNum = token.next.column
+                    currToken = token
+                    while currToken.linenr == token.linenr and currToken.str != ';':
+                        tempStr += currToken.str
+                        currToken = currToken.next
+                    if ')' in tempStr and '(' not in tempStr:
+                        tempStr = tempStr.split(')', 1)[0]
+                    if '?' in tempStr:
+                        tempStr = tempStr.split('?')[1]
+                        variableValuesMap[currVariableID].append(tuple((tempStr.split(':')[0], scopeID, lineNum, columnNum)))
+                        variableValuesMap[currVariableID].append(tuple((tempStr.split(':')[1], scopeID, lineNum, columnNum)))
+                        tempStr = ''
+                if tempStr != '':
+                    variableValuesMap[currVariableID].append(tuple((tempStr, scopeID, lineNum, columnNum)))
     
     astMap = defaultdict(list)
     for k, v in astParentsMap.items():
@@ -523,8 +572,18 @@ def addon_core(dumpfile, quiet=False):
 
     print('\n')
 
-    checkThreadDivergenceOutput = checkThreadDivergence(data, tokensMap, astParentsMap, astMap)
-    checkInaccurateAllocationsOutput = checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap)    
+    for k, v in variablesMap.items():
+      print(str(k) + ' : ' + str(v))
+
+    print('\n')
+
+    for k, v in variableValuesMap.items():
+      print(str(k) + ' : ' + str(v))
+
+    print('\n')
+
+    checkThreadDivergenceOutput = checkThreadDivergence(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)
+    checkInaccurateAllocationsOutput = checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)    
     print(' '.join([checkThreadDivergenceOutput, checkInaccurateAllocationsOutput]).strip())
 
 
