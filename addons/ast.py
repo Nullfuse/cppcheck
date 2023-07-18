@@ -330,7 +330,7 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variables
         
     print('\n')
 
-    print('allocationValueMap:')
+    print('cudaMemcpyList:')
     print(cudaMemcpyList)
     print('\n')
     for cudaMemcpyFunctionCall in cudaMemcpyList:
@@ -449,7 +449,123 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variables
             output = ' '.join([output, (str(tokensMap[cudaMemcpyFunctionCall[2][0]].linenr) + ' ' + 'possible_inaccurate_allocation' + ' ' + '1')]).strip()
     
     return output
-    
+
+
+def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap):
+    # Create a map of each array to their size
+    arrayAllocationMap = defaultdict(list)
+    allocationDetected = False
+    allocationType = None
+    cudaMallocFunctionCall = True
+    deviceOrHostPointerVariableID = None
+    variableFound = False
+    cudaMemcpyList = []
+    parameterCount = 0
+    temp = []
+    tempParam = []
+    deviceOrHostLinkID = None
+    for cfg in data.configurations:
+        token_iter = enumerate(cfg.tokenlist)
+        for idx, token in token_iter:
+            if token.str == 'cudaMemcpy':
+                allocationDetected = True
+                allocationType = 'cudaMemcpy'
+                next(token_iter, None)
+                continue
+            if token.str == 'cudaMalloc':
+                allocationDetected = True
+                allocationType = 'cudaMalloc'
+                deviceOrHostLinkID = token.next.linkId
+                deviceOrHostPointerVariableID = None
+                cudaMallocFunctionCall = True
+                variableFound = False
+                currToken = token
+                while currToken.linenr == token.linenr:
+                    if currToken.str == '=':
+                        cudaMallocFunctionCall = False
+                    if cudaMallocFunctionCall == False:
+                        if currToken.variableId is not None:
+                            deviceOrHostPointerVariableID = currToken.variableId
+                            variableFound = True
+                            break
+                    currToken = currToken.previous
+                next(token_iter, None)
+                continue
+            if allocationDetected:
+                if allocationType == 'cudaMemcpy':
+                    if token.str == ',':
+                        parameterCount += 1
+                        temp.append(tempParam)
+                        tempParam = []
+                        if parameterCount == 3:
+                            parameterCount = 0
+                            allocationDetected = False
+                            allocationType = None
+                            cudaMemcpyList.append(temp)
+                            temp = []
+                    else:
+                        tempParam.append(token.Id)
+                else:
+                    if allocationType == 'cudaMalloc' and cudaMallocFunctionCall and variableFound == False:
+                        if token.variableId is not None:
+                            deviceOrHostPointerVariableID = token.variableId
+                        if token.str == ',':
+                            if deviceOrHostPointerVariableID is not None:
+                                variableFound = True
+                            else:
+                                allocationDetected = False
+                                allocationType = None
+                                cudaMallocFunctionCall = True
+                                deviceOrHostPointerVariableID = None
+                                variableFound = False
+                                deviceOrHostLinkID = None
+                    else:
+                        if token.Id == deviceOrHostLinkID:
+                            arrayAllocationMap[deviceOrHostPointerVariableID].append(tempParam)
+                            tempParam = []
+                            allocationDetected = False
+                            allocationType = None
+                            cudaMallocFunctionCall = True
+                            deviceOrHostPointerVariableID = None
+                            variableFound = False
+                            deviceOrHostLinkID = None
+                        else:
+                            tempParam.append(token.Id)
+
+    print('arrayAllocationMap:')
+    for k, v in arrayAllocationMap.items():
+        print(str(k) + ' : ' + str(v))
+        tempStr = ''
+        for list_v in v:
+            for tokenID in list_v:
+                tempStr += tokensMap[tokenID].str
+            tempStr += '\t'
+        print(str(k) + ' : ' + tempStr)
+        
+    print('\n')
+
+    print('cudaMemcpyList:')
+    print(cudaMemcpyList)
+    print('\n')
+    for cudaMemcpyFunctionCall in cudaMemcpyList:
+        tempStr = ''
+        for cudaMemcpyFunctionParameter in cudaMemcpyFunctionCall:
+            for tokenID in cudaMemcpyFunctionParameter:
+                tempStr += tokensMap[tokenID].str
+            tempStr += '\t'
+        print(tempStr)
+        for cudaMemcpyFunctionParameter in cudaMemcpyFunctionCall:
+            for tokenID in cudaMemcpyFunctionParameter:
+                print(tokensMap[tokenID])
+                for cfg in data.configurations:
+                    for value in cfg.valueflow:
+                        if tokensMap[tokenID].valuesId == value.Id:
+                            print(value)
+        print('\n')
+        
+    output = ''
+    return output
+
 
 def addon_core(dumpfile, quiet=False):
     # load XML from .dump file
@@ -548,7 +664,8 @@ def addon_core(dumpfile, quiet=False):
 
     checkThreadDivergenceOutput = checkThreadDivergence(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)
     checkInaccurateAllocationsOutput = checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)    
-    print(' '.join([checkThreadDivergenceOutput, checkInaccurateAllocationsOutput]).strip())
+    checkMemoryAccessOutput = checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)    
+    print(' '.join([checkThreadDivergenceOutput, checkInaccurateAllocationsOutput, checkMemoryAccessOutput]).strip())
 
 
 def get_args_parser():
