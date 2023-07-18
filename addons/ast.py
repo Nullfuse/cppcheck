@@ -191,9 +191,9 @@ def checkThreadDivergence(data, tokensMap, astParentsMap, astMap, variablesMap, 
             print(tempStr + '\n')
     '''
 
-    # Get the possible values of each token variable in conditionals or loops
-    tokenValueMap = defaultdict(list)
-    lineNumberOfValue = defaultdict(list)
+    # Check the possible values of each token variable in conditionals or loops and see if it contains threadIdx
+    lineInOutput = {}
+    output = ''
     for idx, tokenIDList in enumerate(conditionalOrLoopList):
         for tokenID in tokenIDList:
             if idx in isConstantList:
@@ -201,109 +201,24 @@ def checkThreadDivergence(data, tokensMap, astParentsMap, astMap, variablesMap, 
                 for x in tokenIDList:
                     tempStr = tempStr + tokensMap[x].str
                 if is_number(tempStr) == False:
-                    tokenValueMap[tokenID].append(tempStr)
-                    lineNumberOfValue[tokenID].append(str(tokensMap[tokenIDList[0]].linenr))
+                    if 'threadIdx' in tempStr and tokensMap[tokenID].linenr not in lineInOutput:
+                        output += ' ' + str(tokensMap[tokenID].linenr) + ' ' + 'possible_thread_divergence' + ' ' + str(tokensMap[tokenID].linenr)
+                        lineInOutput[tokensMap[tokenID].linenr] = True
                 break
             if tokensMap[tokenID].variableId is not None:
-                for k, v in astMap.items():
-                    if tokensMap[k].getKnownIntValue() is None:
-                        if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
-                            if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
-                                if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
-                                    tempStr = ''
-                                    currentToken = tokensMap[k]
-                                    while tokensMap[k].linenr == currentToken.previous.linenr and currentToken.previous.str != ';' and (currentToken.previous.str != '(' and currentToken.previous.previous.str != 'for'):
-                                        currentToken = currentToken.previous
-                                    while True:
-                                        tempStr = tempStr + currentToken.str
-                                        currentToken = currentToken.next
-                                        if currentToken.str == '?':
-                                            currentToken = currentToken.next
-                                            tempStr = ''
-                                            while True:
-                                                if currentToken.str == ':':
-                                                    if tokenValueMap[tokenID]:
-                                                        valueOfASTParent = getValueOfParent(tokensMap, currentToken.previous)
-                                                        if valueOfASTParent is not None:
-                                                            if valueOfASTParent != tokenValueMap[tokenID][-1]:
-                                                                tokenValueMap[tokenID].append(str(valueOfASTParent))
-                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                                                        else: 
-                                                            if tempStr != tokenValueMap[tokenID][-1]:
-                                                                tokenValueMap[tokenID].append(tempStr)
-                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                                                    else:
-                                                        tokenValueMap[tokenID].append(tempStr)
-                                                        lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                                                    currentToken = currentToken.next
-                                                    tempStr = ''
-                                                if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
-                                                    if tokenValueMap[tokenID]:
-                                                        valueOfASTParent = getValueOfParent(tokensMap, currentToken.previous)
-                                                        if valueOfASTParent is not None:
-                                                            if valueOfASTParent != tokenValueMap[tokenID][-1]:
-                                                                tokenValueMap[tokenID].append(str(valueOfASTParent))
-                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                                                        else: 
-                                                            if tempStr != tokenValueMap[tokenID][-1]:
-                                                                tokenValueMap[tokenID].append(tempStr)
-                                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                                                    else:
-                                                        tokenValueMap[tokenID].append(tempStr)
-                                                        lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                                                    tempStr = ''
-                                                    break
-                                                tempStr = tempStr + currentToken.str
-                                                currentToken = currentToken.next
-                                            break
-                                        if currentToken.str == ';' or (currentToken.str == ')' and currentToken.next.str == '{'):
-                                            break
-                                    if tempStr != '':
-                                        if tokenValueMap[tokenID]:
-                                            if tempStr != tokenValueMap[tokenID][-1]:
-                                                tokenValueMap[tokenID].append(tempStr)
-                                                lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                                        else:
-                                            tokenValueMap[tokenID].append(tempStr)
-                                            lineNumberOfValue[tokenID].append(str(currentToken.previous.linenr))
-                    else:
-                        if tokensMap[k].astOperand1.variableId == tokensMap[tokenID].variableId:
-                            if tokensMap[k].linenr < tokensMap[tokenID].linenr or (tokensMap[k].linenr == tokensMap[tokenID].linenr and tokensMap[k].astOperand1.column <= tokensMap[tokenID].column): # Only get the possible values before that line of code
-                                if tokenValueMap[tokenID]:
-                                    if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
-                                        if str(tokensMap[k].getKnownIntValue()) != tokenValueMap[tokenID][-1]:
-                                            tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
-                                            lineNumberOfValue[tokenID].append(str(tokensMap[k].linenr))
-                                        if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId or getScopeOfVariableDeclaration(tokensMap, tokensMap[tokenID].variableId) == tokensMap[k].astOperand1.scopeId:
-                                            break
-                                else:
-                                    if tokensMap[k].str == '++' or tokensMap[k].str == '--' or ('=' in tokensMap[k].str and '<' not in tokensMap[k].str and '>' not in tokensMap[k].str and '!' not in tokensMap[k].str and tokensMap[k].str != '=='):
-                                        tokenValueMap[tokenID].append(str(tokensMap[k].getKnownIntValue()))
-                                        lineNumberOfValue[tokenID].append(str(tokensMap[k].linenr))
-                                        if tokensMap[k].astOperand1.scopeId == tokensMap[tokenID].scopeId or getScopeOfVariableDeclaration(tokensMap, tokensMap[tokenID].variableId) == tokensMap[k].astOperand1.scopeId:
-                                            break
-
-    for k, v in tokenValueMap.items():
-        print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
-    for k, v in lineNumberOfValue.items():
-        print(tokensMap[k].str + '  ' + 'Line Number: ' + str(tokensMap[k].linenr) + '  ' + str(k) + ' : ' + str(v))
-
-    print('\n')
-
-    output = ''
-    for k, v in tokenValueMap.items():
-        if 'threadIdx' in str(v) and (str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence') not in output:
-            for idx, value in enumerate(v):
-                if 'threadIdx' in value:
-                    indexOfTarget = idx
-                    break
-            if output != '':
-                output = output + ' ' + str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence' + ' ' + lineNumberOfValue[k][indexOfTarget]
-            else:
-                output = str(tokensMap[k].linenr) + ' ' + 'possible_thread_divergence' + ' ' + lineNumberOfValue[k][indexOfTarget]
-    print(output)
+                if tokensMap[tokenID].variableId in variableValuesMap:
+                    for value in variableValuesMap[tokensMap[tokenID].variableId]:
+                        if value[2] < tokensMap[tokenID].linenr or (value[2] == tokensMap[tokenID].linenr and value[3] <= tokensMap[tokenID].column): # Only get the possible values before that line of code
+                            if 'threadIdx' in value[0] and tokensMap[tokenID].linenr not in lineInOutput:
+                                output += ' ' + str(tokensMap[tokenID].linenr) + ' ' + 'possible_thread_divergence' + ' ' + str(value[2])
+                                lineInOutput[tokensMap[tokenID].linenr] = True
+                                break
+                            if is_number(value[0]) and (value[1] == tokensMap[tokenID].scopeId or getScopeOfVariableDeclaration(tokensMap, tokensMap[tokenID].variableId) == value[1]):
+                                break
+                                
+    print(output.strip())
     print('\n\n')
-    return output
+    return output.strip()
 
 
 def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap):
