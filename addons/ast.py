@@ -453,6 +453,7 @@ def checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variables
 
 def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap):
     # Create a map of each array to their size
+    # Get kernel implications
     arrayAllocationMap = defaultdict(list)
     allocationDetected = False
     allocationType = None
@@ -464,9 +465,23 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     temp = []
     tempParam = []
     deviceOrHostLinkID = None
+    kernelImplicationMap = defaultdict(list)
     for cfg in data.configurations:
         token_iter = enumerate(cfg.tokenlist)
         for idx, token in token_iter:
+            if token.str == '<<' and token.next.str == '<':
+                kernelName = token.previous.str
+                currToken = token.next.next
+                while currToken.previous.str != '>>' and currToken.str != '>':
+                    if currToken.str == ',' or currToken.str == '>>':
+                        temp.append(tempParam)
+                        tempParam = []
+                    else:
+                        tempParam.append(currToken.Id)
+                    currToken = currToken.next
+                    next(token_iter, None)
+                kernelImplicationMap[kernelName].append(temp)
+                continue
             if token.str == 'cudaMemcpy':
                 allocationDetected = True
                 allocationType = 'cudaMemcpy'
@@ -561,7 +576,18 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     for value in cfg.valueflow:
                         if tokensMap[tokenID].valuesId == value.Id:
                             print(value)
-        print('\n')
+        print('\n')    
+
+    print('kernelImplicationMap:')
+    for k, v in kernelImplicationMap.items():
+        print(str(k) + ' : ' + str(v))
+        tempStr = ''
+        for invocationCall in v:
+            for parameter in invocationCall:
+                for tokenID in parameter:
+                    tempStr += tokensMap[tokenID].str
+                tempStr += '\t'
+        print(str(k) + ' : ' + tempStr)
         
     output = ''
     return output
