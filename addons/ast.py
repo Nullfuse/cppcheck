@@ -552,7 +552,19 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                 else:
                     uint3Map[variableName].append(tempTuple)
                 continue
+            if token.variable is not None:
+                if token.variable.isArray == True:
+                    currToken = token
+                    tempStr = ''
+                    while getattr(currToken.previous, 'linenr', False) == token.linenr:
+                        currToken = currToken.previous
+                    while currToken.linenr == token.linenr:
+                        tempStr += currToken.str
+                        currToken = currToken.next
+                    print(tempStr)
 
+    print('\n') # Remove after testing arrays
+    
     print('cudaMallocMap:')
     for k, v in cudaMallocMap.items():
         print(str(k) + ' : ' + str(v))
