@@ -467,8 +467,10 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
             if token.str == 'cudaMalloc':
                 endingLinkID = token.next.linkId
                 currToken = token.next.next
-                variableID = ''
+                variableID = None
+                tempStr = ''
                 while currToken.str != ',' and currToken.linenr == token.linenr:
+                    tempStr += currToken.str
                     if currToken.variableId is not None:
                         variableID = currToken.variableId
                     currToken = currToken.next
@@ -479,7 +481,10 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     tempParam.append(currToken.Id)
                     currToken = currToken.next
                     next(token_iter, None)
-                cudaMallocMap[variableID].append(tempParam)
+                if variableID is not None:
+                    cudaMallocMap[variableID].append(tempParam)
+                else:
+                    cudaMallocMap[tempStr].append(tempParam)
                 tempParam = []
                 continue
             if token.str == 'cudaMemcpy':
@@ -508,6 +513,19 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     currToken = currToken.next
                     next(token_iter, None)
                 kernelImplicationMap[kernelName].append(temp)
+                temp = []
+                endingLinkID = currToken.next.linkId
+                currToken = currToken.next.next
+                while getattr(currToken, 'Id', 'None') != endingLinkID and currToken.linenr == token.linenr:
+                    if currToken.str != ',':
+                        tempParam.append(currToken.Id)
+                    if currToken.str == ',' or getattr(currToken.next, 'Id', 'None') == endingLinkID:
+                        temp.append(tempParam)
+                        tempParam = []
+                    currToken = currToken.next
+                    next(token_iter, None)
+                kernelImplicationMap[kernelName].append(temp)
+                temp = []
                 continue
             if (token.str == 'dim3' or token.str == 'uint3') and token.next.next.linkId is not None:
                 cudaStructure = token.str
@@ -575,6 +593,7 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                 for tokenID in parameter:
                     tempStr += tokensMap[tokenID].str
                 tempStr += '\t'
+            tempStr += '\t'
         print(str(k) + ' : ' + tempStr)
 
     print('\n')
@@ -688,9 +707,13 @@ def addon_core(dumpfile, quiet=False):
 
     print('\n')
 
+    print('===================================================================')
     checkThreadDivergenceOutput = checkThreadDivergence(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)
-    checkInaccurateAllocationsOutput = checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)    
+    print('===================================================================')
+    checkInaccurateAllocationsOutput = checkInaccurateAllocations(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)  
+    print('===================================================================')
     checkMemoryAccessOutput = checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, variableValuesMap)    
+    print('===================================================================')
     print(' '.join([checkThreadDivergenceOutput, checkInaccurateAllocationsOutput, checkMemoryAccessOutput]).strip())
 
 
