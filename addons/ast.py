@@ -466,6 +466,7 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     tempParam = []
     deviceOrHostLinkID = None
     kernelImplicationMap = defaultdict(list)
+    dim3Map = defaultdict(list)
     for cfg in data.configurations:
         token_iter = enumerate(cfg.tokenlist)
         for idx, token in token_iter:
@@ -481,6 +482,28 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     currToken = currToken.next
                     next(token_iter, None)
                 kernelImplicationMap[kernelName].append(temp)
+                continue
+            if token.str == 'dim3' and token.next.next.linkId is not None:
+                variableName = token.next.str
+                endingLinkID = token.next.next.linkId
+                currToken = token.next.next.next
+                for _ in range(3):
+                    next(token_iter, None)
+                tempList = ['1', '1', '1']
+                numParameters = 1
+                tempStr = ''
+                while getattr(currToken, 'linkId', 'None') != endingLinkID:
+                    print(currToken)
+                    if currToken.str == ',' or getattr(currToken.next, 'linkId', 'None') == endingLinkID:
+                        tempList[numParameters - 1] = tempStr
+                        tempStr = ''
+                        ++numParameters
+                    else:
+                        tempStr += currToken.str
+                    currToken = currToken.next
+                    next(token_iter, None)
+                tempTuple = tuple(tempList)
+                dim3Map[variableName].append(tempTuple)
                 continue
             if token.str == 'cudaMemcpy':
                 allocationDetected = True
@@ -588,6 +611,10 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     tempStr += tokensMap[tokenID].str
                 tempStr += '\t'
         print(str(k) + ' : ' + tempStr)
+
+    print('dim3Map:')
+    for k, v in dim3Map.items():
+        print(str(k) + ' : ' + str(v))
         
     output = ''
     return output
