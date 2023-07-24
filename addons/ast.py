@@ -467,6 +467,7 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     deviceOrHostLinkID = None
     kernelImplicationMap = defaultdict(list)
     dim3Map = defaultdict(list)
+    uint3Map = defaultdict(list)
     for cfg in data.configurations:
         token_iter = enumerate(cfg.tokenlist)
         for idx, token in token_iter:
@@ -483,7 +484,8 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     next(token_iter, None)
                 kernelImplicationMap[kernelName].append(temp)
                 continue
-            if token.str == 'dim3' and token.next.next.linkId is not None:
+            if (token.str == 'dim3' or token.str == 'uint3') and token.next.next.linkId is not None:
+                cudaStructure = token.str
                 variableName = token.next.str
                 endingLinkID = token.next.next.linkId
                 currToken = token.next.next.next
@@ -501,9 +503,11 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                         numParameters += 1
                     currToken = currToken.next
                     next(token_iter, None)
-                print(tempList, 'Final')
                 tempTuple = tuple(tempList)
-                dim3Map[variableName].append(tempTuple)
+                if cudaStructure == 'dim3':
+                    dim3Map[variableName].append(tempTuple)
+                else:
+                    uint3Map[variableName].append(tempTuple)
                 continue
             if token.str == 'cudaMemcpy':
                 allocationDetected = True
@@ -617,7 +621,13 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     print('dim3Map:')
     for k, v in dim3Map.items():
         print(str(k) + ' : ' + str(v))
-        
+
+    print('\n')
+
+    print('uint3Map:')
+    for k, v in uint3Map.items():
+        print(str(k) + ' : ' + str(v))
+    
     output = ''
     return output
 
