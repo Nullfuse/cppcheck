@@ -492,16 +492,16 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                 tempList = ['1', '1', '1']
                 numParameters = 1
                 tempStr = ''
-                while getattr(currToken, 'linkId', 'None') != endingLinkID:
-                    print(currToken)
-                    if currToken.str == ',' or getattr(currToken.next, 'linkId', 'None') == endingLinkID:
+                while getattr(currToken, 'Id', 'None') != endingLinkID and currToken.linenr == token.linenr:
+                    if currToken.str != ',':
+                        tempStr += currToken.str
+                    if currToken.str == ',' or getattr(currToken.next, 'Id', 'None') == endingLinkID:
                         tempList[numParameters - 1] = tempStr
                         tempStr = ''
-                        ++numParameters
-                    else:
-                        tempStr += currToken.str
+                        numParameters += 1
                     currToken = currToken.next
                     next(token_iter, None)
+                print(tempList, 'Final')
                 tempTuple = tuple(tempList)
                 dim3Map[variableName].append(tempTuple)
                 continue
@@ -611,6 +611,8 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     tempStr += tokensMap[tokenID].str
                 tempStr += '\t'
         print(str(k) + ' : ' + tempStr)
+
+    print('\n')
 
     print('dim3Map:')
     for k, v in dim3Map.items():
