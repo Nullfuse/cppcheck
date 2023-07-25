@@ -556,12 +556,14 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                 if token.variable.isArray == True:
                     currToken = token
                     tempStr = ''
-                    while getattr(currToken.previous, 'linenr', False) == token.linenr:
-                        currToken = currToken.previous
                     while currToken.linenr == token.linenr:
                         tempStr += currToken.str
+                        if currToken.str == ']' and currToken.next.str != '[':
+                            break
                         currToken = currToken.next
+                        next(token_iter, None)
                     print(tempStr)
+                    continue
 
     print('\n') # Remove after testing arrays
     
