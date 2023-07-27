@@ -462,6 +462,7 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     dim3Map = defaultdict(list)
     uint3Map = defaultdict(list)
     functionsMap = {}
+    globalArrayMap = defaultdict(list)
     for cfg in data.configurations:
         token_iter = enumerate(cfg.tokenlist)
         for idx, token in token_iter:
@@ -574,6 +575,17 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                     currToken = currToken.next
 
     print('\n') # Remove after testing arrays
+
+    for k, v in functionsMap.items():
+        currToken = tokensMap[v[0]]
+        while currToken.Id != v[2]:
+            if token.variable is not None:
+                if token.variable.isArray == True and currToken.variableId not in globalArrayMap[k]:
+                    globalArrayMap[k].append(currToken.variableId)
+            if currToken.valueType is not None:
+                if currToken.valueType.pointer == 1 and currToken.variableId not in globalArrayMap[k]:
+                    globalArrayMap[k].append(currToken.variableId)
+            currToken = currToken.next
     
     print('cudaMallocMap:')
     for k, v in cudaMallocMap.items():
@@ -634,6 +646,12 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
 
     print('functionsMap:')
     for k, v in functionsMap.items():
+        print(str(k) + ' : ' + str(v))
+
+    print('\n')
+    
+    print('globalArrayMap:')
+    for k, v in globalArrayMap.items():
         print(str(k) + ' : ' + str(v))
     
     output = ''
