@@ -461,6 +461,7 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     kernelImplicationMap = defaultdict(list)
     dim3Map = defaultdict(list)
     uint3Map = defaultdict(list)
+    functionsMap = {}
     for cfg in data.configurations:
         token_iter = enumerate(cfg.tokenlist)
         for idx, token in token_iter:
@@ -564,6 +565,13 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                         next(token_iter, None)
                     print(tempStr)
                     continue
+            if token.functionId is not None:
+                currToken = token
+                while currToken is not None:
+                    if currToken.str == '{':
+                        functionsMap[token.str] = tuple((token.Id, token.scopeId, currToken.Id, currToken.linkId))
+                        break
+                    currToken = currToken.next
 
     print('\n') # Remove after testing arrays
     
@@ -620,6 +628,12 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
 
     print('uint3Map:')
     for k, v in uint3Map.items():
+        print(str(k) + ' : ' + str(v))
+
+    print('\n')
+
+    print('functionsMap:')
+    for k, v in functionsMap.items():
         print(str(k) + ' : ' + str(v))
     
     output = ''
