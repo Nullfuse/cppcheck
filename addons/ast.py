@@ -596,20 +596,20 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                 tempList = [k, currToken.linenr, currToken.str, None, None, None]
                 currToken = currToken.next
                 idx = 3
-                tempStr = ''
+                tempParam = []
                 while True:
                     if currToken.str == '[':
                         currToken = currToken.next
                         continue
                     elif currToken.str == ']':
-                        tempList[idx] = tempStr
+                        tempList[idx] = tempParam
                         idx += 1
-                        tempStr = ''
+                        tempParam = []
                         if currToken.next.str != '[':
                             arraysInKernelDefinition.append(tempList)
                             break
                     else:
-                        tempStr += currToken.str
+                        tempParam.append(currToken.Id)
                     currToken = currToken.next
             currToken = currToken.next
     
