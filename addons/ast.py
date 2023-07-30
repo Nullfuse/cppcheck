@@ -580,11 +580,37 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
         currToken = tokensMap[v[0]]
         while currToken.Id != v[2]:
             if token.variable is not None:
-                if token.variable.isArray == True and currToken.variableId not in globalArrayMap[k]:
+                if token.variable.isArray == True and currToken.variableId not in globalArrayMap[k] and currToken.variableId is not None:
                     globalArrayMap[k].append(currToken.variableId)
             if currToken.valueType is not None:
-                if currToken.valueType.pointer == 1 and currToken.variableId not in globalArrayMap[k]:
+                if currToken.valueType.pointer != 0 and currToken.variableId not in globalArrayMap[k] and currToken.variableId is not None:
                     globalArrayMap[k].append(currToken.variableId)
+            currToken = currToken.next
+
+    arraysInKernelDefinition = []
+    for k, v in globalArrayMap.items():
+        functionInfo = functionsMap[k]
+        currToken = tokensMap[functionInfo[2]]
+        while currToken.Id != functionInfo[3]:
+            if currToken.variableId in v:
+                tempList = [k, currToken.linenr, currToken.str, None, None, None]
+                currToken = currToken.next
+                idx = 3
+                tempStr = ''
+                while True:
+                    if currToken.str == '[':
+                        currToken = currToken.next
+                        continue
+                    elif currToken.str == ']':
+                        tempList[idx] = tempStr
+                        idx += 1
+                        tempStr = ''
+                        if currToken.next.str != '[':
+                            arraysInKernelDefinition.append(tempList)
+                            break
+                    else:
+                        tempStr += currToken.str
+                    currToken = currToken.next
             currToken = currToken.next
     
     print('cudaMallocMap:')
@@ -653,6 +679,11 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     print('globalArrayMap:')
     for k, v in globalArrayMap.items():
         print(str(k) + ' : ' + str(v))
+
+    print('\n')
+
+    print('arraysInKernelDefinition:')
+    print(arraysInKernelDefinition)
     
     output = ''
     return output
