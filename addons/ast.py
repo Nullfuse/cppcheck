@@ -463,6 +463,7 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
     uint3Map = defaultdict(list)
     functionsMap = {}
     globalArrayMap = defaultdict(list)
+    globalArrayParameterMap = defaultdict(list)
     for cfg in data.configurations:
         token_iter = enumerate(cfg.tokenlist)
         for idx, token in token_iter:
@@ -578,13 +579,18 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
 
     for k, v in functionsMap.items():
         currToken = tokensMap[v[0]]
+        paramNumber = 1
         while currToken.Id != v[2]:
+            if currToken.str == ',':
+                paramNumber += 1
             if token.variable is not None:
                 if token.variable.isArray == True and currToken.variableId not in globalArrayMap[k] and currToken.variableId is not None:
                     globalArrayMap[k].append(currToken.variableId)
+                    globalArrayParameterMap[k].append(paramNumber)
             if currToken.valueType is not None:
                 if currToken.valueType.pointer != 0 and currToken.variableId not in globalArrayMap[k] and currToken.variableId is not None:
                     globalArrayMap[k].append(currToken.variableId)
+                    globalArrayParameterMap[k].append(paramNumber)
             currToken = currToken.next
 
     arraysInKernelDefinition = []
@@ -644,20 +650,6 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
                             print(value)
         print('\n')    
 
-    print('kernelImplicationMap:')
-    for k, v in kernelImplicationMap.items():
-        print(str(k) + ' : ' + str(v))
-        tempStr = ''
-        for invocationCall in v:
-            for parameter in invocationCall:
-                for tokenID in parameter:
-                    tempStr += tokensMap[tokenID].str
-                tempStr += '\t'
-            tempStr += '\t'
-        print(str(k) + ' : ' + tempStr)
-
-    print('\n')
-
     print('dim3Map:')
     for k, v in dim3Map.items():
         print(str(k) + ' : ' + str(v))
@@ -681,9 +673,73 @@ def checkMemoryAccess(data, tokensMap, astParentsMap, astMap, variablesMap, vari
         print(str(k) + ' : ' + str(v))
 
     print('\n')
+    
+    print('globalArrayParameterMap:')
+    for k, v in globalArrayParameterMap.items():
+        print(str(k) + ' : ' + str(v))
+    
+    print('\n')
 
     print('arraysInKernelDefinition:')
     print(arraysInKernelDefinition)
+
+    for array in arraysInKernelDefinition:
+        print(array)
+        tempStr = ''
+        valueStr = ''
+        for idx in range(3, len(array)):
+            if array[idx] is not None:
+                for tokenID in array[idx]:
+                    tempStr += tokensMap[tokenID].str
+                    if is_number(tokensMap[tokenID].str):
+                        valueStr += tokensMap[tokenID].str
+                    elif tokensMap[tokenID].variableId is not None and tokensMap[tokenID].variableId in variableValuesMap:
+                        valueStr += str(variableValuesMap[tokensMap[tokenID].variableId][0][0])
+                    elif getTopMostValueOfAST(tokensMap, tokenID) is not None:
+                        valueStr += str(getTopMostValueOfAST(tokensMap, tokenID))
+                    else:
+                        valueStr += tokensMap[tokenID].str
+            else:
+                tempStr += 'None'
+                valueStr += 'None'
+            tempStr += '\t'
+            valueStr += '\t'
+        print(tempStr)
+        print(valueStr)
+
+    print('\n')
+    
+    print('kernelImplicationMap:')
+    for k, v in kernelImplicationMap.items():
+        print(str(k) + ' : ' + str(v))
+        tempStr = ''
+        valueStr = ''
+        for invocationCall in v:
+            for parameter in invocationCall:
+                for tokenID in parameter:
+                    tempStr += tokensMap[tokenID].str
+                    if is_number(tokensMap[tokenID].str):
+                        valueStr += tokensMap[tokenID].str
+                    elif tokensMap[tokenID].variableId is not None and tokensMap[tokenID].variableId in variableValuesMap:
+                        valueStr += str(variableValuesMap[tokensMap[tokenID].variableId][0][0])
+                    elif tokensMap[tokenID].str in dim3Map:
+                        valueStr += str(dim3Map[tokensMap[tokenID].str])
+                    elif tokensMap[tokenID].str in uint3Map:
+                        valueStr += str(uint3Map[tokensMap[tokenID].str])
+                    elif getTopMostValueOfAST(tokensMap, tokenID) is not None:
+                        valueStr += str(getTopMostValueOfAST(tokensMap, tokenID))
+                    elif tokensMap[tokenID].str in cudaMallocMap:
+                        for list_v in cudaMallocMap[tokensMap[tokenID].str]:
+                            for tokenID in list_v:
+                                valueStr += tokensMap[tokenID].str
+                    else:
+                        valueStr += tokensMap[tokenID].str
+                tempStr += '\t'
+                valueStr += '\t'
+            tempStr += '\t'
+            valueStr += '\t'
+        print(str(k) + ' : ' + tempStr)
+        print(str(k) + ' : ' + valueStr)
     
     output = ''
     return output
